@@ -16,15 +16,31 @@ import {SafeERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solid
  */
 
 /// @title ReputationManager - A CCIP-enabled contract for managing agent reputation across chains
-contract ReputationManager is CCIPReceiver, OwnerIsCreator {
+contract ReputationMirror is CCIPReceiver, OwnerIsCreator {
     using SafeERC20 for IERC20;
 
     // Constants
-    uint64 public constant DEST_SELECTOR_SEPOLIA = 16015286601757825753;
+    uint64 public constant DEST_SELECTOR_HEDERA = 222782988166878823;
 
     // State variables
     address public destinationReceiver;
     mapping(address => uint16) public reputation; // Reputation scores, 0 = unregistered sentinel
+
+	event AgentRegistered(address indexed agent, string tag);
+
+	event TransactionFinalized(
+		address indexed buyer,
+		address indexed seller,
+		string x402Ref,
+		int8 rating
+	);
+
+	event ReputationUpdated(
+		address indexed seller,
+		string x402Ref,
+		uint16 oldRep,
+		uint16 newRep
+	);
 
     // Chainlink CCIP fee token
     IERC20 private s_linkToken;
@@ -74,7 +90,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     /// @notice Initialize contract with CCIP router and LINK token addresses
     constructor(address _router, address _link) CCIPReceiver(_router) {
         s_linkToken = IERC20(_link);
-        allowlistedDestinationChains[DEST_SELECTOR_SEPOLIA] = true;
+        allowlistedDestinationChains[DEST_SELECTOR_HEDERA] = true;
     }
 
     // -------------------------------------------------------------------------
@@ -163,8 +179,25 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         s_lastReceivedMessageId = any2EvmMessage.messageId;
         s_lastReceivedData = any2EvmMessage.data;
 
-        (address agent, uint16 newRep) = abi.decode(any2EvmMessage.data, (address, uint16));
-        updateAgentRepFromDAO(agent, newRep);
+		uint8 command = uint8(any2EvmMessage.data[0]);
+		bytes memory rest = any2EvmMessage.data[1:];
+
+		if (command == 1) {
+			(address agent, string memory tag, uint16 initRep) = abi.decode(rest, (address,string,uint16));
+
+			reputation[agent] = initRep;
+
+			emit AgentRegistered(agent, tag);
+    		emit ReputationUpdated(agent, "", 0, initRep);
+		} else if (command == 2) {
+			(address buyer, address seller, uint16 oldRep, string memory x402Ref, uint16 newRep) =
+        		abi.decode(rest, (address,address,uint16,string,uint16));
+
+			reputation[seller] = newRep;
+
+			emit TransactionFinalized(buyer, seller, x402Ref, int8(newRep) - int8(oldRep));
+    		emit ReputationUpdated(seller, x402Ref, oldRep, newRep);
+		}
 
         emit MessageReceived(
             any2EvmMessage.messageId,
@@ -194,47 +227,23 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         });
     }
 
-    // -------------------------------------------------------------------------
-    // Reputation Logic
-    // -------------------------------------------------------------------------
-    function registerAgent(address agent, string memory tag, uint16 initRep) external {
-        require(agent != address(0), "zero agent");
-        require(reputation[agent] == 0, "already registered");
-        require(bytes(tag).length > 0, "empty tag");
-        require(initRep >= 1 && initRep <= 100, "init reputation out of range");
+	function sendDAOUpdate(
+		address agent,
+		uint16 newRep
+	) external onlyOwner {
+		require(reputation[agent] != 0, "agent not registered"); // optional check
 
-        reputation[agent] = initRep;
+		uint16 oldRep = reputation[agent];
+		reputation[agent] = newRep;
 
-        bytes memory payload = abi.encodePacked(uint8(1), abi.encode(agent, tag, initRep));
-        _sendCCIPLink(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
-    }
+		// Build a payload that the Hedera mirror will decode as (address, uint16)
+		bytes memory payload = abi.encode(agent, newRep);
 
-    function finalizeTransaction(address seller, int8 rating, string calldata x402Ref) external {
-        require(rating >= -3 && rating <= 3, "rating out of range");
-        require(reputation[msg.sender] != 0, "buyer not registered");
-        require(reputation[seller] != 0, "seller not registered");
-        require(seller != msg.sender, "self-rating not allowed");
+		// Send to Hedera
+		_sendCCIPLink(DEST_SELECTOR_HEDERA, destinationReceiver, payload);
 
-        uint16 oldRep = reputation[seller];
-
-        int256 newVal = int256(uint256(oldRep)) + int256(rating);
-        if (newVal < 1) newVal = 1;
-        if (newVal > 100) newVal = 100;
-
-        uint16 newRep = uint16(uint256(newVal));
-        reputation[seller] = newRep;
-
-        bytes memory payload = abi.encodePacked(uint8(2), abi.encode(msg.sender, seller, oldRep, x402Ref, newRep));
-        _sendCCIPLink(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
-    }
-
-    function updateAgentRepFromDAO(address agent, uint16 newRep) internal {
-        require(agent != address(0), "zero agent");
-        require(reputation[agent] != 0, "agent not registered");
-        require(newRep >= 1 && newRep <= 100, "reputation out of range");
-
-        reputation[agent] = newRep;
-    }
+		emit ReputationUpdated(agent, "", oldRep, newRep);
+	}
 
     // -------------------------------------------------------------------------
     // Utility
