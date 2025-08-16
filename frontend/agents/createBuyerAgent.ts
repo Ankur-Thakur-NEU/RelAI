@@ -1,7 +1,11 @@
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { createToolCallingAgent } from "langchain/agents";
 import { Client, PrivateKey } from "@hashgraph/sdk";
-import { HederaLangchainToolkit } from "hedera-agent-kit";
+import {
+  HederaLangchainToolkit,
+  coreQueriesPlugin,
+  AgentMode,
+} from "hedera-agent-kit";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ToolInterface } from "@langchain/core/tools";
 
@@ -32,7 +36,17 @@ export async function createBuyerAgent({
 }: CreateBuyerAgentOptions) {
   const hederaClient = createHederaClient(hederaAccountId, hederaPrivateKey);
 
-  const hederaToolkit = new HederaLangchainToolkit({ client: hederaClient });
+  const hederaToolkit = new HederaLangchainToolkit({
+    client: hederaClient,
+    configuration: {
+      plugins: [coreQueriesPlugin],
+      // Execution context...look into this
+      context: {
+        mode: AgentMode.AUTONOMOUS,
+        accountId: hederaAccountId,
+      },
+    },
+  });
 
   const tools = [...hederaToolkit.getTools(), ...extraTools];
 
@@ -45,7 +59,9 @@ export async function createBuyerAgent({
   });
 
   // Attach metadata (optional)
-  agent.metadata = { name, hederaAccountId };
+  const agentWithMetaData = agent.withConfig({
+    metadata: { name, hederaAccountId },
+  });
 
-  return agent;
+  return agentWithMetaData;
 }
