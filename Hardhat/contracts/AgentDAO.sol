@@ -847,74 +847,6 @@ contract AgentDAO is
         return proposalId;
     }
     
-    /**
-     * @dev Override execute to emit detailed events for indexing
-     */
-    function _execute(
-        uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) {
-        ProposalData storage proposal = proposalData[proposalId];
-        
-        int256 oldReputation = 0;
-        if (proposal.targetAgent != address(0)) {
-            oldReputation = registry.getAgentReputation(proposal.targetAgent);
-        }
-        
-        // Execute the proposal
-        super._execute(proposalId, targets, values, calldatas, descriptionHash);
-        
-        proposal.executed = true;
-        
-        // Emit detailed events for different proposal types
-        if (proposal.targetAgent != address(0)) {
-            int256 newReputation = registry.getAgentReputation(proposal.targetAgent);
-            
-            if (proposal.proposalType == ProposalType.REPUTATION_UPDATE ||
-                proposal.proposalType == ProposalType.MALICIOUS_REPORT) {
-                emit ReputationUpdated(
-                    proposal.targetAgent,
-                    oldReputation,
-                    newReputation,
-                    proposal.reputationDelta,
-                    proposalId,
-                    proposal.reason
-                );
-            }
-            
-            if (proposal.proposalType == ProposalType.BLACKLIST_AGENT) {
-                emit AgentBlacklisted(
-                    proposal.targetAgent,
-                    true, // blacklisted status would be extracted from calldata
-                    proposalId,
-                    proposal.reason,
-                    block.timestamp
-                );
-            }
-            
-            if (proposal.proposalType == ProposalType.CROSS_CHAIN_SYNC) {
-                emit CrossChainSyncRequested(
-                    proposal.targetAgent,
-                    newReputation,
-                    proposalId,
-                    block.timestamp
-                );
-            }
-        }
-        
-        emit ProposalExecutedWithDetails(
-            proposalId,
-            proposal.proposalType,
-            proposal.targetAgent,
-            proposal.reputationDelta,
-            true,
-            block.timestamp
-        );
-    }
-    
     // Administrative functions
     
     /**
@@ -1016,7 +948,7 @@ contract AgentDAO is
     function setVotingDelay(uint256 newVotingDelay) external {
         require(msg.sender == address(this), "Only governance can call");
         uint256 oldDelay = votingDelay();
-        _setVotingDelay(newVotingDelay);
+        _setVotingDelay(uint48(newVotingDelay));
         
         emit GovernanceSettingsUpdated(
             "votingDelay",
@@ -1034,7 +966,7 @@ contract AgentDAO is
     function setVotingPeriod(uint256 newVotingPeriod) external {
         require(msg.sender == address(this), "Only governance can call");
         uint256 oldPeriod = votingPeriod();
-        _setVotingPeriod(newVotingPeriod);
+        _setVotingPeriod(uint32(newVotingPeriod));
         
         emit GovernanceSettingsUpdated(
             "votingPeriod",
@@ -1379,7 +1311,7 @@ contract AgentDAO is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(Governor, GovernorTimelockControl)
+        override
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
@@ -1396,21 +1328,23 @@ contract AgentDAO is
         uint8 support,
         uint256 weight,
         bytes memory params
-    ) internal override {
+    ) internal override returns (uint256) {
         ProposalVote storage proposalVote = _proposalVotes[proposalId];
 
         require(!proposalVote.hasVoted[account], "GovernorVotingSimple: vote already cast");
         proposalVote.hasVoted[account] = true;
 
-        if (support == uint8(IGovernor.VoteType.Against)) {
+        if (support == 0) { // Against
             proposalVote.againstVotes += weight;
-        } else if (support == uint8(IGovernor.VoteType.For)) {
+        } else if (support == 1) { // For
             proposalVote.forVotes += weight;
-        } else if (support == uint8(IGovernor.VoteType.Abstain)) {
+        } else if (support == 2) { // Abstain
             proposalVote.abstainVotes += weight;
         } else {
             revert("GovernorVotingSimple: invalid value for enum VoteType");
         }
+        
+        return weight;
     }
 
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
@@ -1454,6 +1388,7 @@ contract AgentDAO is
         return super._queueOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
 
+    // ENHANCED VERSION WITH EVENT LOGIC:
     function _executeOperations(
         uint256 proposalId,
         address[] memory targets,
@@ -1461,6 +1396,61 @@ contract AgentDAO is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
+        ProposalData storage proposal = proposalData[proposalId];
+        
+        int256 oldReputation = 0;
+        if (proposal.targetAgent != address(0)) {
+            oldReputation = registry.getAgentReputation(proposal.targetAgent);
+        }
+        
+        // Execute the proposal
         super._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
+        
+        proposal.executed = true;
+        
+        // Emit detailed events for different proposal types
+        if (proposal.targetAgent != address(0)) {
+            int256 newReputation = registry.getAgentReputation(proposal.targetAgent);
+            
+            if (proposal.proposalType == ProposalType.REPUTATION_UPDATE ||
+                proposal.proposalType == ProposalType.MALICIOUS_REPORT) {
+                emit ReputationUpdated(
+                    proposal.targetAgent,
+                    oldReputation,
+                    newReputation,
+                    proposal.reputationDelta,
+                    proposalId,
+                    proposal.reason
+                );
+            }
+            
+            if (proposal.proposalType == ProposalType.BLACKLIST_AGENT) {
+                emit AgentBlacklisted(
+                    proposal.targetAgent,
+                    true, // blacklisted status would be extracted from calldata
+                    proposalId,
+                    proposal.reason,
+                    block.timestamp
+                );
+            }
+            
+            if (proposal.proposalType == ProposalType.CROSS_CHAIN_SYNC) {
+                emit CrossChainSyncRequested(
+                    proposal.targetAgent,
+                    newReputation,
+                    proposalId,
+                    block.timestamp
+                );
+            }
+        }
+        
+        emit ProposalExecutedWithDetails(
+            proposalId,
+            proposal.proposalType,
+            proposal.targetAgent,
+            proposal.reputationDelta,
+            true,
+            block.timestamp
+        );
     }
 }
