@@ -18,6 +18,15 @@ import {SafeERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solid
 contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     using SafeERC20 for IERC20;
 
+	uint64 public constant DEST_SELECTOR_SEPOLIA = 16015286601757825753;
+	address public destinationReceiver;
+	mapping(address => uint16) public reputation; // 0 = unregistered sentinel
+
+	function setDestinationReceiver(address _receiver) external onlyOwner {
+		require(_receiver != address(0), "bad receiver");
+		destinationReceiver = _receiver;
+	}
+
     // Custom errors to provide more descriptive revert messages.
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance.
     error NothingToWithdraw(); // Used when trying to withdraw Ether but there's nothing to withdraw.
@@ -32,7 +41,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         bytes32 indexed messageId, // The unique ID of the CCIP message.
         uint64 indexed destinationChainSelector, // The chain selector of the destination chain.
         address receiver, // The address of the receiver on the destination chain.
-        string text, // The text being sent.
+        bytes data, // The bytes being sent.
         address feeToken, // the token address used to pay CCIP fees.
         uint256 fees // The fees paid for sending the CCIP message.
     );
@@ -42,11 +51,11 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         bytes32 indexed messageId, // The unique ID of the CCIP message.
         uint64 indexed sourceChainSelector, // The chain selector of the source chain.
         address sender, // The address of the sender from the source chain.
-        string text // The text that was received.
+        bytes data // The bytes that was received.
     );
 
     bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
-    string private s_lastReceivedText; // Store the last received text.
+	bytes private s_lastReceivedData;
 
     // Mapping to keep track of allowlisted destination chains.
     mapping(uint64 => bool) public allowlistedDestinationChains;
@@ -64,6 +73,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     /// @param _link The address of the link contract.
     constructor(address _router, address _link) CCIPReceiver(_router) {
         s_linkToken = IERC20(_link);
+		allowlistedDestinationChains[DEST_SELECTOR_SEPOLIA] = true;
     }
 
     /// @dev Modifier that checks if the chain with the given destinationChainSelector is allowlisted.
@@ -122,7 +132,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     function sendMessagePayLINK(
         uint64 _destinationChainSelector,
         address _receiver,
-        string calldata _text
+        bytes memory _data
     )
         external
         onlyOwner
@@ -133,7 +143,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             _receiver,
-            _text,
+            _data,
             address(s_linkToken)
         );
 
@@ -157,7 +167,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
             messageId,
             _destinationChainSelector,
             _receiver,
-            _text,
+            _data,
             address(s_linkToken),
             fees
         );
@@ -176,7 +186,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     function sendMessagePayNative(
         uint64 _destinationChainSelector,
         address _receiver,
-        string calldata _text
+        bytes memory _data
     )
         external
         onlyOwner
@@ -187,7 +197,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             _receiver,
-            _text,
+            _data,
             address(0)
         );
 
@@ -211,7 +221,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
             messageId,
             _destinationChainSelector,
             _receiver,
-            _text,
+            _data,
             address(0),
             fees
         );
@@ -232,13 +242,16 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         ) // Make sure source chain and sender are allowlisted
     {
         s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
-        s_lastReceivedText = abi.decode(any2EvmMessage.data, (string)); // abi-decoding of the sent text
+		s_lastReceivedData = any2EvmMessage.data;
+		(address agent, uint16 newRep) = abi.decode(any2EvmMessage.data, (address, uint16));
+
+		updateAgentRepFromDAO(agent, newRep);
 
         emit MessageReceived(
             any2EvmMessage.messageId,
             any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
             abi.decode(any2EvmMessage.sender, (address)), // abi-decoding of the sender address,
-            abi.decode(any2EvmMessage.data, (string))
+            any2EvmMessage.data
         );
     }
 
@@ -250,14 +263,14 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
     function _buildCCIPMessage(
         address _receiver,
-        string calldata _text,
+        bytes memory _data,
         address _feeTokenAddress
     ) private pure returns (Client.EVM2AnyMessage memory) {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         return
             Client.EVM2AnyMessage({
                 receiver: abi.encode(_receiver), // ABI-encoded receiver address
-                data: abi.encode(_text), // ABI-encoded string
+                data: _data, // ABI-encoded string
                 tokenAmounts: new Client.EVMTokenAmount[](0), // Empty array as no tokens are transferred
                 extraArgs: Client._argsToBytes(
                     // Additional arguments, setting gas limit and allowing out-of-order execution.
@@ -282,7 +295,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         view
         returns (bytes32 messageId, string memory text)
     {
-        return (s_lastReceivedMessageId, s_lastReceivedText);
+        return (s_lastReceivedMessageId, s_lastReceivedData);
     }
 
     /// @notice Fallback function to allow the contract to receive Ether.
@@ -324,4 +337,52 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 
         IERC20(_token).safeTransfer(_beneficiary, amount);
     }
+
+	function registerAgent(address agent, string memory tag, uint16 initRep) internal {
+		require(agent != address(0), "zero agent");
+		require(reputation[agent] == 0, "already registered");     // 0 => sentinel
+		require(bytes(tag).length > 0, "empty tag");
+		require(initRep >= 1 && initRep <= 100, "initial reputation must be [1, 100]");
+
+		reputation[agent] = initRep;
+
+		bytes memory payload = abi.encode(agent, tag, initRep);
+		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
+	}
+	
+	function finalizeTransaction(
+		address seller, 
+		int8 rating, 
+		string calldata x402Ref
+	) external {
+		require(rating >= -3 && rating <= 3, "rating out of range");
+		
+		require(reputation[msg.sender] != 0, "buyer not registered");
+		require(reputation[seller] != 0, "seller not registered");
+		
+		require(seller != msg.sender, "self rating not allowed");
+		
+		uint16 oldRep = reputation[seller];
+		
+		int256 newVal = int256(uint256(oldRep)) + int256(rating);
+		if (newVal < 1)   newVal = 1;
+		if (newVal > 100) newVal = 100;
+
+		uint16 newRep = uint16(uint256(newVal));
+		reputation[seller] = newRep;
+
+		bytes memory payload = abi.encode(msg.sender, seller, oldRep, x402Ref, newRep);
+		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
+	}
+
+	function updateAgentRepFromDAO(address agent, uint16 newRep) internal {
+		require(agent != address(0), "zero agent");
+		require(reputation[agent] != 0, "agent not registered");
+    	require(newRep >= 1 && newRep <= 100, "reputation out of bounds");
+
+		reputation[agent] = newRep;
+
+		bytes memory payload = abi.encode(agent, newRep);
+		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
+	}
 }
