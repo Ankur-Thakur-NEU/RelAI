@@ -1,5 +1,7 @@
+import "server-only";
+
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { createToolCallingAgent } from "langchain/agents";
+import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { Client, PrivateKey } from "@hashgraph/sdk";
 import {
   HederaLangchainToolkit,
@@ -10,7 +12,6 @@ import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ToolInterface } from "@langchain/core/tools";
 
 export interface CreateBuyerAgentOptions {
-  name: string;
   hederaAccountId: string;
   hederaPrivateKey: string;
   llm: BaseChatModel;
@@ -18,7 +19,7 @@ export interface CreateBuyerAgentOptions {
    * Any extra tools you want to include alongside Hedera toolkit tools,
    * e.g. your subgraph tool or contract invoke tool.
    */
-  extraTools: ToolInterface[];
+  extraTools?: ToolInterface[];
 }
 
 function createHederaClient(accountId: string, privateKey: string): Client {
@@ -27,13 +28,12 @@ function createHederaClient(accountId: string, privateKey: string): Client {
   return client;
 }
 
-export async function createBuyerAgent({
-  name,
+export function createBuyerAgent({
   hederaAccountId,
   hederaPrivateKey,
   llm,
   extraTools = [],
-}: CreateBuyerAgentOptions) {
+}: CreateBuyerAgentOptions): AgentExecutor {
   const hederaClient = createHederaClient(hederaAccountId, hederaPrivateKey);
 
   const hederaToolkit = new HederaLangchainToolkit({
@@ -50,18 +50,28 @@ export async function createBuyerAgent({
 
   const tools = [...hederaToolkit.getTools(), ...extraTools];
 
-  const prompt = ChatPromptTemplate.fromMessages(["system", ""]);
+  const SYSTEM_PROMPT = `
+	You are a Buyer Agent operating on Hedera testnet.
+	- You can query Hedera state and submit transactions via toolkit tools.
+	- You may also call custom tools (e.g., subgraph, hireAndExecute).
+	- Be concise and return concrete results. If you perform chain actions, summarize tx IDs.
+  `.trim();
+  const prompt = ChatPromptTemplate.fromMessages([
+    ["system", SYSTEM_PROMPT],
+    ["human", "{input}"],
+  ]);
 
   const agent = createToolCallingAgent({
-    llm, // your LLM instance
+    llm,
     tools,
-    prompt, // your prompt setup
+    prompt,
   });
 
-  // Attach metadata (optional)
-  const agentWithMetaData = agent.withConfig({
-    metadata: { name, hederaAccountId },
+  const executor = new AgentExecutor({
+    agent,
+    tools,
+    // Optionally: maxIterations: 8,
   });
 
-  return agentWithMetaData;
+  return executor;
 }
