@@ -1,25 +1,16 @@
-require("dotenv").config();
-const { ethers } = require("hardhat");
+const hre = require("hardhat");
 
 async function main() {
-  // Load deployer wallet
-  const [deployer] = await ethers.getSigners();
-  console.log("Deploying contracts with account:", deployer.address);
+  const HelloSepolia = await hre.ethers.getContractFactory("HelloSepolia");
+  console.log("Deploying HelloSepolia...");
 
-  // Hedera testnet CCIP router and LINK token addresses (replace with actual addresses)
-  const CCIP_ROUTER_ADDRESS = "0x802C5F84eAD128Ff36fD6a3f8a418e339f467Ce4";
-  const LINK_TOKEN_ADDRESS = "0x779877A7B0D9E8603169DdbD7836e478b4624789";
+  // Deploy contract with constructor parameter
+  const hello = await HelloSepolia.deploy("Hello from Sepolia!");
 
-  // Compile and get contract factory
-  const ReputationManager = await ethers.getContractFactory("ReputationManager");
+  // Wait for deployment to finish
+  await hello.deploymentTransaction().wait();
 
-  // Deploy contract with constructor parameters
-  const reputationManager = await ReputationManager.deploy(CCIP_ROUTER_ADDRESS, LINK_TOKEN_ADDRESS);
-
-  // Wait for the deployment transaction to be mined
-  await reputationManager.waitForDeployment();
-
-  console.log("ReputationManager deployed to:", reputationManager.target);
+  console.log("HelloSepolia deployed at:", hello.target);
 }
 
 main()
