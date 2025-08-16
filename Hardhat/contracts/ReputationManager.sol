@@ -122,113 +122,47 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         allowlistedSenders[_sender] = allowed;
     }
 
-    /// @notice Sends data to receiver on the destination chain.
-    /// @notice Pay for fees in LINK.
-    /// @dev Assumes your contract has sufficient LINK.
-    /// @param _destinationChainSelector The identifier (aka selector) for the destination blockchain.
-    /// @param _receiver The address of the recipient on the destination blockchain.
-    /// @param _text The text to be sent.
-    /// @return messageId The ID of the CCIP message that was sent.
-    function sendMessagePayLINK(
-        uint64 _destinationChainSelector,
-        address _receiver,
-        bytes memory _data
-    )
-        external
-        onlyOwner
-        onlyAllowlistedDestinationChain(_destinationChainSelector)
-        validateReceiver(_receiver)
-        returns (bytes32 messageId)
-    {
-        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
-        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-            _receiver,
-            _data,
-            address(s_linkToken)
-        );
+	// Always pay CCIP fees in LINK
+	function _sendCCIPLink(
+		uint64 destinationChainSelector,
+		address receiver,
+		bytes memory data
+	) internal returns (bytes32 messageId) {
+		require(receiver != address(0), "bad receiver");
+		require(destinationReceiver != address(0), "dest not set");
+		if (!allowlistedDestinationChains[destinationChainSelector]) {
+			revert DestinationChainNotAllowlisted(destinationChainSelector);
+		}
 
-        // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
+		// Build message with LINK as feeToken
+		Client.EVM2AnyMessage memory m = _buildCCIPMessage(
+			receiver,
+			data,
+			address(s_linkToken)
+		);
 
-        // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee(_destinationChainSelector, evm2AnyMessage);
+		IRouterClient router = IRouterClient(getRouter()); // avoid external call with `this.getRouter()`
 
-        if (fees > s_linkToken.balanceOf(address(this)))
-            revert NotEnoughBalance(s_linkToken.balanceOf(address(this)), fees);
+		uint256 fees = router.getFee(destinationChainSelector, m);
+		uint256 bal  = s_linkToken.balanceOf(address(this));
+		if (fees > bal) revert NotEnoughBalance(bal, fees);
 
-        // approve the Router to transfer LINK tokens on contract's behalf. It will spend the fees in LINK
-        s_linkToken.approve(address(router), fees);
+		// Safer approval pattern
+		s_linkToken.safeApprove(address(router), 0);
+		s_linkToken.safeApprove(address(router), fees);
 
-        // Send the CCIP message through the router and store the returned CCIP message ID
-        messageId = router.ccipSend(_destinationChainSelector, evm2AnyMessage);
+		messageId = router.ccipSend(destinationChainSelector, m);
 
-        // Emit an event with message details
-        emit MessageSent(
-            messageId,
-            _destinationChainSelector,
-            _receiver,
-            _data,
-            address(s_linkToken),
-            fees
-        );
+		emit MessageSent(
+			messageId,
+			destinationChainSelector,
+			receiver,
+			data,
+			address(s_linkToken),
+			fees
+		);
+	}
 
-        // Return the CCIP message ID
-        return messageId;
-    }
-
-    /// @notice Sends data to receiver on the destination chain.
-    /// @notice Pay for fees in native gas.
-    /// @dev Assumes your contract has sufficient native gas tokens.
-    /// @param _destinationChainSelector The identifier (aka selector) for the destination blockchain.
-    /// @param _receiver The address of the recipient on the destination blockchain.
-    /// @param _text The text to be sent.
-    /// @return messageId The ID of the CCIP message that was sent.
-    function sendMessagePayNative(
-        uint64 _destinationChainSelector,
-        address _receiver,
-        bytes memory _data
-    )
-        external
-        onlyOwner
-        onlyAllowlistedDestinationChain(_destinationChainSelector)
-        validateReceiver(_receiver)
-        returns (bytes32 messageId)
-    {
-        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
-        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-            _receiver,
-            _data,
-            address(0)
-        );
-
-        // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
-
-        // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee(_destinationChainSelector, evm2AnyMessage);
-
-        if (fees > address(this).balance)
-            revert NotEnoughBalance(address(this).balance, fees);
-
-        // Send the CCIP message through the router and store the returned CCIP message ID
-        messageId = router.ccipSend{value: fees}(
-            _destinationChainSelector,
-            evm2AnyMessage
-        );
-
-        // Emit an event with message details
-        emit MessageSent(
-            messageId,
-            _destinationChainSelector,
-            _receiver,
-            _data,
-            address(0),
-            fees
-        );
-
-        // Return the CCIP message ID
-        return messageId;
-    }
 
     /// handle a received message
     function _ccipReceive(
@@ -293,7 +227,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     function getLastReceivedMessageDetails()
         external
         view
-        returns (bytes32 messageId, string memory text)
+        returns (bytes32 messageId, bytes memory data)
     {
         return (s_lastReceivedMessageId, s_lastReceivedData);
     }
@@ -338,7 +272,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         IERC20(_token).safeTransfer(_beneficiary, amount);
     }
 
-	function registerAgent(address agent, string memory tag, uint16 initRep) internal {
+	function registerAgent(address agent, string memory tag, uint16 initRep) external {
 		require(agent != address(0), "zero agent");
 		require(reputation[agent] == 0, "already registered");     // 0 => sentinel
 		require(bytes(tag).length > 0, "empty tag");
@@ -347,7 +281,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 		reputation[agent] = initRep;
 
 		bytes memory payload = abi.encode(agent, tag, initRep);
-		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
+		_sendCCIPLink(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
 	}
 	
 	function finalizeTransaction(
@@ -372,7 +306,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 		reputation[seller] = newRep;
 
 		bytes memory payload = abi.encode(msg.sender, seller, oldRep, x402Ref, newRep);
-		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
+		_sendCCIPLink(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
 	}
 
 	function updateAgentRepFromDAO(address agent, uint16 newRep) internal {
@@ -381,8 +315,5 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     	require(newRep >= 1 && newRep <= 100, "reputation out of bounds");
 
 		reputation[agent] = newRep;
-
-		bytes memory payload = abi.encode(agent, newRep);
-		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
 	}
 }
