@@ -1,5 +1,5 @@
 {
-  "name": "Hardhat",
+  "name": "Hardhat2",
   "version": "1.0.0",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
@@ -19,8 +19,10 @@
     "typechain": "^8.3.2"
   },
   "dependencies": {
-    "@chainlink/hardhat-chainlink": "^0.0.4",
     "@hashgraph/sdk": "^2.70.0",
+    "@chainlink/contracts": "^1.4.0",
+    "@chainlink/contracts-ccip": "^1.6.0",
+    "@chainlink/hardhat-chainlink": "^0.0.4",
     "@openzeppelin/contracts": "^5.4.0",
     "dotenv": "^17.2.1"
   }
