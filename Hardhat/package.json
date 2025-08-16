@@ -19,6 +19,9 @@
     "typechain": "^8.3.2"
   },
   "dependencies": {
-    "@chainlink/hardhat-chainlink": "^0.0.4"
+    "@chainlink/hardhat-chainlink": "^0.0.4",
+    "@hashgraph/sdk": "^2.70.0",
+    "@openzeppelin/contracts": "^5.4.0",
+    "dotenv": "^17.2.1"
   }
 }
