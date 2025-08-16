@@ -1,115 +1,42 @@
-# RelAI
+Decentralized Cross-Chain Reputation Registry for AI Agents
+Project Summary
+This project is a Minimum Viable Product (MVP) for a decentralized, cross-chain reputation registry for AI agents, built for a hackathon. It addresses the challenge of trust in agent-driven markets by creating a transparent, tamper-proof system to track AI agent reputations across blockchains, preventing malicious actors from exploiting silos or evading accountability (e.g., lying about task outcomes or deleting test cases). Using Hedera as the primary chain, the registry leverages Chainlink CCIP for cross-chain syncing, Chainlink Functions for third-party reputation data (e.g., GitHub stars or AI marketplace scores), The Graph (with Hypergraph) for indexing and AI-friendly queries, and OpenZeppelin for DAO governance. A frontend dashboard enables users to register agents, simulate hires, report malice, and query reputations, showcasing a story where honest agents gain reputation while malicious ones are flagged and slashed across chains.
+Key Features
 
-Welcome to RelAI - A next-generation AI project focused on building intelligent relationships and connections.
+Agent Onboarding & Scoring: Smart contracts on Hedera store agent metadata (name, capabilities, reputation) with functions like registerAgent(), hireAndExecute(), and updateReputation().
+Third-Party Reputation: Chainlink Functions fetches off-chain scores (e.g., mock AI agent performance) to verify trustworthiness or detect lies (e.g., test deletions).
+DAO Governance: OpenZeppelin Governor enables community-driven proposals and voting to approve or slash reputations, ensuring fairness.
+Cross-Chain Syncing: Chainlink CCIP syncs reputations across chains (e.g., Hedera to Ethereum), preventing chain-hopping by bad actors.
+Data Indexing: The Graph (subgraph) and Hypergraph index events for fast queries, with Hypergraph enabling private, AI-accessible data (MCP-like).
+Frontend Dashboard: React UI with buttons for hiring, reporting malice, fetching third-party data, and a story mode demonstrating honest vs. malicious agent scenarios.
+Stretch Goal: Stake-backed reputation with token slashing for poor performance.
 
-## Overview
+Tech Stack
 
-RelAI is designed to revolutionize how artificial intelligence understands and facilitates human relationships, connections, and interactions. This project aims to create more meaningful and contextually aware AI systems.
+Blockchain: Hedera (EVM-compatible)
+Cross-Chain: Chainlink CCIP
+Off-Chain Data: Chainlink Functions
+Indexing: The Graph (subgraph + Hypergraph)
+Governance: OpenZeppelin
+Frontend: React, ethers.js, Tailwind CSS
+Tools: Hardhat, Hedera SDK, Vercel (hosting)
 
-## Features
+Motivation
+In an automated, agent-driven economy, blind trust risks scams or sabotage. Centralized reputation systems create silos, bias, and censorship. Our registry offers a unified, immutable trust layer, ensuring AI agents are verifiable, accountable, and interoperable across chains, fostering secure collaboration and economic interactions.
+Demo Story
+The dashboard narrates a dual path:
 
-- Ì¥ñ Advanced AI relationship modeling
-- Ì¥ó Intelligent connection detection
-- Ì≥ä Relationship analytics and insights
-- ÌæØ Personalized interaction recommendations
-- Ìª°Ô∏è Privacy-focused design
+Honest Agent: Hires succeed, third-party data (via Functions) boosts rep, synced via CCIP.
+Malicious Agent: Lies or deletes tests, detected by API checks or DAO disputes, leading to reputation slashing and cross-chain flagging.
 
-## Getting Started
+Setup Instructions
 
-### Prerequisites
+Clone repo: git clone <repo-url>
+Install: npm install
+Configure: Set HBAR_ACCOUNT_ID, PRIVATE_KEY, CHAINLINK_SUBSCRIPTION_ID in .env
+Deploy contracts: npx hardhat deploy --network hederaTestnet
+Deploy subgraph/Hypergraph: Use Graph Studio and Hypergraph SDK
+Run frontend: cd frontend && npm start
 
-- Python 3.8 or higher
-- pip package manager
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/RelAI.git
-
-# Navigate to the project directory
-cd RelAI
-
-# Install dependencies (when available)
-pip install -r requirements.txt
-```
-
-### Usage
-
-```python
-# Example usage will be added as the project develops
-from relai import RelAI
-
-# Initialize RelAI
-ai = RelAI()
-
-# Your code here
-```
-
-## Project Structure
-
-```
-RelAI/
-‚îú‚îÄ‚îÄ src/              # Source code
-‚îú‚îÄ‚îÄ tests/            # Test files
-‚îú‚îÄ‚îÄ docs/             # Documentation
-‚îú‚îÄ‚îÄ models/           # AI models and weights
-‚îú‚îÄ‚îÄ data/             # Data files (gitignored)
-‚îú‚îÄ‚îÄ requirements.txt  # Python dependencies
-‚îî‚îÄ‚îÄ README.md         # Project documentation
-```
-
-## Contributing
-
-We welcome contributions to RelAI! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Development Setup
-
-```bash
-# Create a virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install development dependencies
-pip install -r requirements-dev.txt
-```
-
-## Testing
-
-```bash
-# Run tests
-python -m pytest
-
-# Run tests with coverage
-python -m pytest --cov=src
-```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-- Project Link: [https://github.com/yourusername/RelAI](https://github.com/yourusername/RelAI)
-- Issues: [https://github.com/yourusername/RelAI/issues](https://github.com/yourusername/RelAI/issues)
-
-## Acknowledgments
-
-- Thanks to all contributors who help make RelAI better
-- Inspired by the latest advances in AI and machine learning
-- Built with ‚ù§Ô∏è for the developer community
-
----
-
-‚≠ê Don't forget to star this repository if you find it useful!
+Team
+Built by a 5-member team for a EthGlobal NYC, targeting Chainlink, The Graph, and other sponsor prizes. Contributions include smart contracts, integrations, and UI/UX design.
