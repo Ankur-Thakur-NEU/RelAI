@@ -30,18 +30,18 @@ module.exports = {
     },
     
     // Hedera Networks - Support both environment variable naming conventions
-    ...(process.env.HEDERA_PRIVATE_KEY || process.env.TESTNET_OPERATOR_PRIVATE_KEY ? {
+    ...(process.env.HEDERA_PRIVATE_KEY ? {
       hederaTestnet: {
-        url: process.env.HEDERA_TESTNET_URL || process.env.TESTNET_ENDPOINT || "https://testnet.hashio.io/api",
-        accounts: [process.env.HEDERA_PRIVATE_KEY || process.env.TESTNET_OPERATOR_PRIVATE_KEY],
+        url: "https://testnet.hashio.io/api",
+        accounts: [process.env.HEDERA_PRIVATE_KEY],
         chainId: 296, // Hedera Testnet Chain ID
         gas: 800000,
         gasPrice: 360000000000, // 360 gwei (Hedera minimum)
       },
       // Alias for compatibility
       testnet: {
-        url: process.env.HEDERA_TESTNET_URL || process.env.TESTNET_ENDPOINT || "https://testnet.hashio.io/api",
-        accounts: [process.env.HEDERA_PRIVATE_KEY || process.env.TESTNET_OPERATOR_PRIVATE_KEY],
+        url: "https://testnet.hashio.io/api",
+        accounts: [process.env.HEDERA_PRIVATE_KEY],
         chainId: 296,
         gas: 800000,
         gasPrice: 360000000000,
@@ -50,7 +50,7 @@ module.exports = {
     
     ...(process.env.HEDERA_PRIVATE_KEY ? {
       hederaMainnet: {
-        url: process.env.HEDERA_MAINNET_URL || "https://mainnet.hashio.io/api", 
+        url: "https://mainnet.hashio.io/api", 
         accounts: [process.env.HEDERA_PRIVATE_KEY],
         chainId: 295, // Hedera Mainnet Chain ID
         gas: 800000,
@@ -61,29 +61,21 @@ module.exports = {
     // Other Networks (optional for cross-chain)
     ...(process.env.SEPOLIA_PRIVATE_KEY ? {
       sepolia: {
-        url: process.env.SEPOLIA_URL || "https://rpc.sepolia.org",
+        url: "https://rpc.sepolia.org",
         accounts: [process.env.SEPOLIA_PRIVATE_KEY],
         chainId: 11155111,
       },
-    } : {}),
-    
-    ...(process.env.MAINNET_PRIVATE_KEY ? {
-      mainnet: {
-        url: process.env.MAINNET_URL || "https://ethereum.publicnode.com",
-        accounts: [process.env.MAINNET_PRIVATE_KEY],
-        chainId: 1,
-      },
-    } : {}),
+    } : {})
   },
-  gasReporter: {
-    enabled: process.env.REPORT_GAS === "true",
-    currency: "USD",
-    coinmarketcap: process.env.COINMARKETCAP_API_KEY,
-  },
-  etherscan: {
-    apiKey: {
-      sepolia: process.env.ETHERSCAN_API_KEY,
-      mainnet: process.env.ETHERSCAN_API_KEY,
-    },
-  },
+  // gasReporter: {
+  //   enabled: process.env.REPORT_GAS === "true",
+  //   currency: "USD",
+  //   coinmarketcap: process.env.COINMARKETCAP_API_KEY,
+  // },
+  // etherscan: {
+  //   apiKey: {
+  //     sepolia: process.env.ETHERSCAN_API_KEY,
+  //     mainnet: process.env.ETHERSCAN_API_KEY,
+  //   },
+  // },
 };
