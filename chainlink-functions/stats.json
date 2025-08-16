@@ -1,0 +1,246 @@
+[
+    {
+      "model": "GPT-5 mini (2025-08-07)",
+      "score": 0.819
+    },
+    {
+      "model": "o4-mini (2025-04-16)",
+      "score": 0.812
+    },
+    {
+      "model": "o3 (2025-04-16)",
+      "score": 0.811
+    },
+    {
+      "model": "GPT-5 (2025-08-07)",
+      "score": 0.807
+    },
+    {
+      "model": "Qwen3 235B A22B Instruct 2507 FP8",
+      "score": 0.798
+    },
+    {
+      "model": "Grok 4 (0709)",
+      "score": 0.785
+    },
+    {
+      "model": "Claude 4 Opus (20250514, extended thinking)",
+      "score": 0.78
+    },
+    {
+      "model": "gpt-oss-120b",
+      "score": 0.77
+    },
+    {
+      "model": "Kimi K2 Instruct",
+      "score": 0.768
+    },
+    {
+      "model": "Claude 4 Sonnet (20250514, extended thinking)",
+      "score": 0.766
+    },
+    {
+      "model": "Claude 4 Opus (20250514)",
+      "score": 0.757
+    },
+    {
+      "model": "GPT-5 nano (2025-08-07)",
+      "score": 0.748
+    },
+    {
+      "model": "Gemini 2.5 Pro (03-25 preview)",
+      "score": 0.745
+    },
+    {
+      "model": "Claude 4 Sonnet (20250514)",
+      "score": 0.733
+    },
+    {
+      "model": "Grok 3 Beta",
+      "score": 0.727
+    },
+    {
+      "model": "GPT-4.1 (2025-04-14)",
+      "score": 0.727
+    },
+    {
+      "model": "Qwen3 235B A22B FP8 Throughput",
+      "score": 0.726
+    },
+    {
+      "model": "GPT-4.1 mini (2025-04-14)",
+      "score": 0.726
+    },
+    {
+      "model": "Llama 4 Maverick (17Bx128E) Instruct FP8",
+      "score": 0.718
+    },
+    {
+      "model": "DeepSeek-R1-0528",
+      "score": 0.699
+    },
+    {
+      "model": "Palmyra X5",
+      "score": 0.696
+    },
+    {
+      "model": "Grok 3 mini Beta",
+      "score": 0.679
+    },
+    {
+      "model": "Gemini 2.0 Flash",
+      "score": 0.679
+    },
+    {
+      "model": "Claude 3.7 Sonnet (20250219)",
+      "score": 0.674
+    },
+    {
+      "model": "gpt-oss-20b",
+      "score": 0.674
+    },
+    {
+      "model": "GLM-4.5-Air-FP8",
+      "score": 0.67
+    },
+    {
+      "model": "DeepSeek v3",
+      "score": 0.665
+    },
+    {
+      "model": "Gemini 1.5 Pro (002)",
+      "score": 0.657
+    },
+    {
+      "model": "Claude 3.5 Sonnet (20241022)",
+      "score": 0.653
+    },
+    {
+      "model": "Llama 4 Scout (17Bx16E) Instruct",
+      "score": 0.644
+    },
+    {
+      "model": "Gemini 2.0 Flash Lite (02-05 preview)",
+      "score": 0.642
+    },
+    {
+      "model": "Amazon Nova Premier",
+      "score": 0.637
+    },
+    {
+      "model": "GPT-4o (2024-11-20)",
+      "score": 0.634
+    },
+    {
+      "model": "Gemini 2.5 Flash (04-17 preview)",
+      "score": 0.626
+    },
+    {
+      "model": "Llama 3.1 Instruct Turbo (405B)",
+      "score": 0.618
+    },
+    {
+      "model": "GPT-4.1 nano (2025-04-14)",
+      "score": 0.616
+    },
+    {
+      "model": "Palmyra-X-004",
+      "score": 0.609
+    },
+    {
+      "model": "Gemini 1.5 Flash (002)",
+      "score": 0.609
+    },
+    {
+      "model": "Qwen2.5 Instruct Turbo (72B)",
+      "score": 0.599
+    },
+    {
+      "model": "Mistral Large (2411)",
+      "score": 0.598
+    },
+    {
+      "model": "Gemini 2.5 Flash-Lite",
+      "score": 0.591
+    },
+    {
+      "model": "Amazon Nova Pro",
+      "score": 0.591
+    },
+    {
+      "model": "Palmyra Fin",
+      "score": 0.577
+    },
+    {
+      "model": "Llama 3.1 Instruct Turbo (70B)",
+      "score": 0.574
+    },
+    {
+      "model": "GPT-4o mini (2024-07-18)",
+      "score": 0.565
+    },
+    {
+      "model": "Mistral Small 3.1 (2503)",
+      "score": 0.558
+    },
+    {
+      "model": "Amazon Nova Lite",
+      "score": 0.551
+    },
+    {
+      "model": "Claude 3.5 Haiku (20241022)",
+      "score": 0.549
+    },
+    {
+      "model": "Qwen2.5 Instruct Turbo (7B)",
+      "score": 0.529
+    },
+    {
+      "model": "Amazon Nova Micro",
+      "score": 0.522
+    },
+    {
+      "model": "Mixtral Instruct (8x22B)",
+      "score": 0.478
+    },
+    {
+      "model": "Palmyra Med",
+      "score": 0.476
+    },
+    {
+      "model": "OLMo 2 32B Instruct March 2025",
+      "score": 0.475
+    },
+    {
+      "model": "IBM Granite 3.3 8B Instruct",
+      "score": 0.463
+    },
+    {
+      "model": "Llama 3.1 Instruct Turbo (8B)",
+      "score": 0.444
+    },
+    {
+      "model": "OLMo 2 13B Instruct November 2024",
+      "score": 0.44
+    },
+    {
+      "model": "OLMo 2 7B Instruct November 2024",
+      "score": 0.405
+    },
+    {
+      "model": "Mixtral Instruct (8x7B)",
+      "score": 0.397
+    },
+    {
+      "model": "Mistral Instruct v0.3 (7B)",
+      "score": 0.376
+    },
+    {
+      "model": "OLMoE 1B-7B Instruct January 2025",
+      "score": 0.332
+    },
+    {
+      "model": "Marin 8B Instruct",
+      "score": 0.325
+    }
+  ]
