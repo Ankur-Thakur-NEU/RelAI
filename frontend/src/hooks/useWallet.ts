@@ -48,7 +48,8 @@ export const useWallet = () => {
   useEffect(() => {
     if (typeof window === 'undefined' || !window.ethereum) return;
 
-    const handleAccountsChanged = (accounts: string[]) => {
+    const handleAccountsChanged = (...args: unknown[]) => {
+      const accounts = args[0] as string[];
       if (accounts.length === 0) {
         setWalletState({
           address: null,
@@ -60,7 +61,7 @@ export const useWallet = () => {
       }
     };
 
-    const handleChainChanged = () => {
+    const handleChainChanged = (...args: unknown[]) => {
       updateWalletState();
     };
 
