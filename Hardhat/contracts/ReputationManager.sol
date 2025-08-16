@@ -234,6 +234,10 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
         s_lastReceivedText = abi.decode(any2EvmMessage.data, (string)); // abi-decoding of the sent text
 
+		(address agent, uint16 newRep) = abi.decode(any2EvmMessage.data, (address, uint16));
+
+		updateAgentRepFromDAO(agent, newRep);
+
         emit MessageReceived(
             any2EvmMessage.messageId,
             any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
@@ -324,4 +328,49 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 
         IERC20(_token).safeTransfer(_beneficiary, amount);
     }
+
+	function registerAgent(address agent, string memory tag, uint16 initRep) internal {
+		require(agent != address(0), "zero agent");
+		require(reputation[agent] == 0, "already registered");     // 0 => sentinel
+		require(bytes(tag).length > 0, "empty tag");
+		require(initRep >= 1 && initRep <= 100, "initial reputation must be [1, 100]");
+
+		reputation[agent] = initRep;
+
+		sendMessagePayLINK(_destinationChainSelector, _receiver, payload);
+	}
+	
+	function finalizeTransaction(
+		address seller, 
+		int8 rating, 
+		string calldata x402Ref
+	) external {
+		require(rating >= -3 && rating <= 3, "rating out of range");
+		
+		require(reputation[msg.sender] != 0, "buyer not registered");
+		require(reputation[seller] != 0, "seller not registered");
+		
+		require(seller != msg.sender, "self rating not allowed");
+		
+		uint16 oldRep = reputation[seller];
+		
+		int256 newVal = int256(uint256(oldRep)) + int256(rating);
+		if (newVal < 1)   newVal = 1;
+		if (newVal > 100) newVal = 100;
+
+		uint16 newRep = uint16(uint256(newVal));
+		reputation[seller] = newRep;
+
+		sendMessagePayLINK(_destinationChainSelector, _receiver, _text);
+	}
+
+	function updateAgentRepFromDAO(address agent, uint16 newRep) internal {
+		require(agent != address(0), "zero agent");
+		require(reputation[agent] != 0, "agent not registered");
+    	require(newRep >= 1 && newRep <= 100, "reputation out of bounds");
+
+		reputation[agent] = newRep;
+
+		sendMessagePayLINK(_destinationChainSelector, _receiver, _text);
+	}
 }
