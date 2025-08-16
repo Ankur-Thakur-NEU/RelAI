@@ -26,7 +26,7 @@ export const useLockContract = () => {
     try {
       const contractInstance = isConnected 
         ? await createLockContract()
-        : createLockContractReadOnly();
+        : await createLockContractReadOnly();
       
       setContract(contractInstance);
       return contractInstance;
@@ -37,20 +37,20 @@ export const useLockContract = () => {
   }, [isConnected]);
 
   // Load contract data
-  const loadContractData = useCallback(async () => {
+  const loadContractData = useCallback(async (contractInstance?: LockContract) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const contractInstance = contract || await initializeContract();
-      if (!contractInstance) {
+      const contractToUse = contractInstance || contract;
+      if (!contractToUse) {
         throw new Error('Contract not available');
       }
 
       const [unlockTime, owner, balance] = await Promise.all([
-        contractInstance.getUnlockTime(),
-        contractInstance.getOwner(),
-        contractInstance.getBalance(),
+        contractToUse.getUnlockTime(),
+        contractToUse.getOwner(),
+        contractToUse.getBalance(),
       ]);
 
       setContractState({
@@ -65,7 +65,7 @@ export const useLockContract = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [contract, initializeContract]);
+  }, [contract]);
 
   // Withdraw funds
   const withdraw = useCallback(async () => {
@@ -96,8 +96,10 @@ export const useLockContract = () => {
 
   // Initialize contract and load data when wallet connection changes
   useEffect(() => {
-    initializeContract().then(() => {
-      loadContractData();
+    initializeContract().then((contractInstance) => {
+      if (contractInstance) {
+        loadContractData(contractInstance);
+      }
     });
   }, [isConnected, initializeContract, loadContractData]);
 
