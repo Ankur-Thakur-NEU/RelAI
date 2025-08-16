@@ -32,7 +32,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         bytes32 indexed messageId, // The unique ID of the CCIP message.
         uint64 indexed destinationChainSelector, // The chain selector of the destination chain.
         address receiver, // The address of the receiver on the destination chain.
-        string text, // The text being sent.
+        bytes data, // The bytes being sent.
         address feeToken, // the token address used to pay CCIP fees.
         uint256 fees // The fees paid for sending the CCIP message.
     );
@@ -42,7 +42,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         bytes32 indexed messageId, // The unique ID of the CCIP message.
         uint64 indexed sourceChainSelector, // The chain selector of the source chain.
         address sender, // The address of the sender from the source chain.
-        string text // The text that was received.
+        bytes data // The bytes that was received.
     );
 
     bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
@@ -122,7 +122,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     function sendMessagePayLINK(
         uint64 _destinationChainSelector,
         address _receiver,
-        string calldata _text
+        bytes memory _data
     )
         external
         onlyOwner
@@ -133,7 +133,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             _receiver,
-            _text,
+            _data,
             address(s_linkToken)
         );
 
@@ -157,7 +157,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
             messageId,
             _destinationChainSelector,
             _receiver,
-            _text,
+            _data,
             address(s_linkToken),
             fees
         );
@@ -176,7 +176,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     function sendMessagePayNative(
         uint64 _destinationChainSelector,
         address _receiver,
-        string calldata _text
+        bytes memory _data
     )
         external
         onlyOwner
@@ -187,7 +187,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
             _receiver,
-            _text,
+            _data,
             address(0)
         );
 
@@ -211,7 +211,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
             messageId,
             _destinationChainSelector,
             _receiver,
-            _text,
+            _data,
             address(0),
             fees
         );
@@ -232,8 +232,6 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         ) // Make sure source chain and sender are allowlisted
     {
         s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
-        s_lastReceivedText = abi.decode(any2EvmMessage.data, (string)); // abi-decoding of the sent text
-
 		(address agent, uint16 newRep) = abi.decode(any2EvmMessage.data, (address, uint16));
 
 		updateAgentRepFromDAO(agent, newRep);
@@ -254,14 +252,14 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
     function _buildCCIPMessage(
         address _receiver,
-        string calldata _text,
+        bytes memory _data,
         address _feeTokenAddress
     ) private pure returns (Client.EVM2AnyMessage memory) {
         // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
         return
             Client.EVM2AnyMessage({
                 receiver: abi.encode(_receiver), // ABI-encoded receiver address
-                data: abi.encode(_text), // ABI-encoded string
+                data: _data, // ABI-encoded string
                 tokenAmounts: new Client.EVMTokenAmount[](0), // Empty array as no tokens are transferred
                 extraArgs: Client._argsToBytes(
                     // Additional arguments, setting gas limit and allowing out-of-order execution.
@@ -337,6 +335,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 
 		reputation[agent] = initRep;
 
+		bytes memory payload = abi.encode(agent, tag, initRep);
 		sendMessagePayLINK(_destinationChainSelector, _receiver, payload);
 	}
 	
@@ -361,7 +360,8 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 		uint16 newRep = uint16(uint256(newVal));
 		reputation[seller] = newRep;
 
-		sendMessagePayLINK(_destinationChainSelector, _receiver, _text);
+		bytes memory payload = abi.encode(msg.sender, seller, oldRep, x402Ref, newRep);
+		sendMessagePayLINK(_destinationChainSelector, _receiver, payload);
 	}
 
 	function updateAgentRepFromDAO(address agent, uint16 newRep) internal {
@@ -371,6 +371,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 
 		reputation[agent] = newRep;
 
-		sendMessagePayLINK(_destinationChainSelector, _receiver, _text);
+		bytes memory payload = abi.encode(agent, newRep);
+		sendMessagePayLINK(_destinationChainSelector, _receiver, payload);
 	}
 }
