@@ -18,6 +18,15 @@ import {SafeERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solid
 contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     using SafeERC20 for IERC20;
 
+	uint64 public constant DEST_SELECTOR_SEPOLIA = 16015286601757825753;
+	address public destinationReceiver;
+	mapping(address => uint16) public reputation; // 0 = unregistered sentinel
+
+	function setDestinationReceiver(address _receiver) external onlyOwner {
+		require(_receiver != address(0), "bad receiver");
+		destinationReceiver = _receiver;
+	}
+
     // Custom errors to provide more descriptive revert messages.
     error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance.
     error NothingToWithdraw(); // Used when trying to withdraw Ether but there's nothing to withdraw.
@@ -46,7 +55,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     );
 
     bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
-    string private s_lastReceivedText; // Store the last received text.
+	bytes private s_lastReceivedData;
 
     // Mapping to keep track of allowlisted destination chains.
     mapping(uint64 => bool) public allowlistedDestinationChains;
@@ -64,6 +73,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
     /// @param _link The address of the link contract.
     constructor(address _router, address _link) CCIPReceiver(_router) {
         s_linkToken = IERC20(_link);
+		allowlistedDestinationChains[DEST_SELECTOR_SEPOLIA] = true;
     }
 
     /// @dev Modifier that checks if the chain with the given destinationChainSelector is allowlisted.
@@ -232,6 +242,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         ) // Make sure source chain and sender are allowlisted
     {
         s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
+		s_lastReceivedData = any2EvmMessage.data;
 		(address agent, uint16 newRep) = abi.decode(any2EvmMessage.data, (address, uint16));
 
 		updateAgentRepFromDAO(agent, newRep);
@@ -240,7 +251,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
             any2EvmMessage.messageId,
             any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
             abi.decode(any2EvmMessage.sender, (address)), // abi-decoding of the sender address,
-            abi.decode(any2EvmMessage.data, (string))
+            any2EvmMessage.data
         );
     }
 
@@ -284,7 +295,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
         view
         returns (bytes32 messageId, string memory text)
     {
-        return (s_lastReceivedMessageId, s_lastReceivedText);
+        return (s_lastReceivedMessageId, s_lastReceivedData);
     }
 
     /// @notice Fallback function to allow the contract to receive Ether.
@@ -336,7 +347,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 		reputation[agent] = initRep;
 
 		bytes memory payload = abi.encode(agent, tag, initRep);
-		sendMessagePayLINK(_destinationChainSelector, _receiver, payload);
+		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
 	}
 	
 	function finalizeTransaction(
@@ -361,7 +372,7 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 		reputation[seller] = newRep;
 
 		bytes memory payload = abi.encode(msg.sender, seller, oldRep, x402Ref, newRep);
-		sendMessagePayLINK(_destinationChainSelector, _receiver, payload);
+		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
 	}
 
 	function updateAgentRepFromDAO(address agent, uint16 newRep) internal {
@@ -372,6 +383,6 @@ contract ReputationManager is CCIPReceiver, OwnerIsCreator {
 		reputation[agent] = newRep;
 
 		bytes memory payload = abi.encode(agent, newRep);
-		sendMessagePayLINK(_destinationChainSelector, _receiver, payload);
+		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
 	}
 }
