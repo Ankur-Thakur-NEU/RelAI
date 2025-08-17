@@ -9,6 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@coinbase/wallet-sdk": "^4.3.7",
+    "@tanstack/react-query": "^5.85.3",
+    "@walletconnect/web3-provider": "^1.8.0",
+    "@web3modal/wagmi": "^5.1.11",
     "@hashgraph/sdk": "^2.70.0",
     "@langchain/anthropic": "^0.3.26",
     "@langchain/core": "^0.3.71",
@@ -22,10 +26,14 @@
     "x402-next": "^0.5.2",
     "@splinetool/react-spline": "^4.1.0",
     "framer-motion": "^12.23.12",
+    "graphql": "^16.11.0",
+    "graphql-request": "^7.2.0",
     "next": "15.4.6",
     "react": "19.1.0",
     "react-countup": "^6.5.3",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "viem": "^2.33.3",
+    "wagmi": "^2.16.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

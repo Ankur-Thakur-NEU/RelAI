@@ -1,14 +1,4 @@
-declare global {
-  interface Window {
-    ethereum?: {
-      request(args: { method: string; params?: unknown[] }): Promise<unknown>;
-      on(event: string, handler: (...args: unknown[]) => void): void;
-      removeListener(event: string, handler: (...args: unknown[]) => void): void;
-      selectedAddress: string | null;
-      chainId: string;
-      isMetaMask?: boolean;
-    };
-  }
-}
+// Global type declarations for the application
+// Note: Wallet-related Window interface extensions are in wallet.d.ts
 
 export {};
