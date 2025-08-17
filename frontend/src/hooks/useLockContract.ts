@@ -14,6 +14,9 @@ export function useLockContract() {
   useEffect(() => {
     async function loadContractData() {
       try {
+        if (!window.ethereum) {
+          throw new Error('No ethereum provider found');
+        }
         const provider = new ethers.BrowserProvider(window.ethereum);
         const contractToUse = createLockContract(provider);
 
