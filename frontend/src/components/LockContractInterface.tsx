@@ -7,7 +7,11 @@ import { useState } from 'react';
 
 export default function LockContractInterface() {
   const { isConnected, address } = useWallet();
-  const { unlockTime, owner, balance, isLoading, error, withdraw, reload } = useLockContract();
+  const { unlockTime, owner, balance } = useLockContract();
+  const isLoading = false; // Mock values for unused component
+  const error = null;
+  const withdraw = async () => console.log('Withdraw not implemented');
+  const reload = () => console.log('Reload not implemented');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   const handleWithdraw = async () => {
