@@ -340,12 +340,22 @@ const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => 
         // Use full container dimensions and maintain high pixel ratio
         const width = canvasRef.current.offsetWidth;
         const height = canvasRef.current.offsetHeight;
-        rendererRef.current.setSize(width, height);
-        rendererRef.current.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const renderer = rendererRef.current as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const camera = cameraRef.current as any;
+        
+        if (renderer) {
+          renderer.setSize(width, height);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        }
         
         // Update camera aspect ratio to match container
-        cameraRef.current.aspect = width / height;
-        cameraRef.current.updateProjectionMatrix();
+        if (camera) {
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+        }
       } catch (error) {
         console.error('Error in resize handler:', error);
       }
