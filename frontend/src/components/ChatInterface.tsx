@@ -48,7 +48,7 @@ export default function ChatInterface() {
       <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
         <h3 className="text-white font-semibold">Agent Chat</h3>
         <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white">
-          💬
+          CHAT
         </div>
       </div>
 

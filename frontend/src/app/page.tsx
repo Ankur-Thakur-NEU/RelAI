@@ -1,14 +1,18 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import LockContractInterface from "@/components/LockContractInterface";
 import WalletConnectionModal from "@/components/ConnectWalletModal";
 import InteractiveBlob from "@/components/InteractiveBlob"; // Import the blob component
+import { useMultiWallet } from '@/hooks/useMultiWallet';
 
 export default function Home() {
   const [isSplineLoaded, setIsSplineLoaded] = useState(false);
   const { scrollYProgress } = useScroll();
+  const router = useRouter();
+  const { isConnected, isConnecting, address, formatAddress, chainId, getNetworkName } = useMultiWallet();
   
   // Transform values based on scroll
   const blobScale = useTransform(scrollYProgress, [0, 0.4], [0.5, 1.5]); // Blob max size at 0.4
@@ -28,6 +32,16 @@ export default function Home() {
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
+
+  // Auto-redirect to dashboard if already connected
+  useEffect(() => {
+    if (isConnected && address) {
+      console.log('[HOME] Wallet connected, redirecting to dashboard...');
+      setTimeout(() => {
+        router.push('/pages/dashboard');
+      }, 2000); // Give user time to see they're connected
+    }
+  }, [isConnected, address, router]);
 
   // Cyberpunk images from Unsplash
   const cyberpunkImages = [
@@ -217,12 +231,49 @@ export default function Home() {
               transition={{ delay: 1.1, duration: 0.8 }}
               className="scale-75"
             >
-              <button 
-                onClick={openModal}
-                className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white font-mono text-lg rounded-lg hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600 transition-colors"
-              >
-                Connect Wallet
-              </button>
+              {!isConnected ? (
+                <button 
+                  onClick={openModal}
+                  disabled={isConnecting}
+                  className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white font-mono text-lg rounded-lg hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isConnecting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                      Connecting...
+                    </>
+                  ) : (
+                    'Connect Wallet'
+                  )}
+                </button>
+              ) : (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="px-4 py-2 bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-lg">
+                    <div className="flex items-center gap-3 text-green-400 font-mono text-sm">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span>Connected: {formatAddress(address || '')}</span>
+                      {chainId && (
+                        <>
+                          <span className="text-gray-400">|</span>
+                          <span>{getNetworkName(chainId)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/pages/dashboard')}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-mono text-lg rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    Access Dashboard
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" />
+                    </svg>
+                  </button>
+                  <div className="text-center text-sm text-gray-400 font-mono">
+                    Redirecting to dashboard...
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
         </motion.div>

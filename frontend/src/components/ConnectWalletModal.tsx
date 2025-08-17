@@ -2,11 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useMultiWallet } from '@/hooks/useMultiWallet';
+import { WalletType, SUPPORTED_WALLETS, isWalletInstalled, getInstallUrl } from '@/lib/walletConfig';
 
-// ToastNotification component
-const ToastNotification = ({ message = 'WALLET CONNECTED - ACCESS GRANTED', isVisible, onClose, duration = 3000 }) => {
+// Enhanced Toast Component
+const ToastNotification = ({ 
+  message, 
+  isVisible, 
+  onClose, 
+  duration = 3000, 
+  type = 'success' 
+}: {
+  message: string;
+  isVisible: boolean;
+  onClose: () => void;
+  duration?: number;
+  type?: 'success' | 'error' | 'info';
+}) => {
   useEffect(() => {
-    if (isVisible && duration) {
+    if (isVisible && duration > 0) {
       const timer = setTimeout(onClose, duration);
       return () => clearTimeout(timer);
     }
@@ -14,11 +28,20 @@ const ToastNotification = ({ message = 'WALLET CONNECTED - ACCESS GRANTED', isVi
 
   if (!isVisible) return null;
 
+  const colors = {
+    success: 'text-green-400 border-green-400/30',
+    error: 'text-red-400 border-red-400/30',
+    info: 'text-blue-400 border-blue-400/30',
+  };
+
   return (
     <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-top-2 duration-300">
-      <div className="bg-black/40 backdrop-blur-xl border border-gray-600/30 rounded-lg p-4 shadow-2xl">
-        <div className="flex items-center gap-3 text-green-400">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+      <div className={`bg-black/60 backdrop-blur-xl border rounded-lg p-4 shadow-2xl ${colors[type]}`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full animate-pulse ${
+            type === 'success' ? 'bg-green-400' : 
+            type === 'error' ? 'bg-red-400' : 'bg-blue-400'
+          }`}></div>
           <span className="font-mono text-sm">{message}</span>
         </div>
       </div>
@@ -34,60 +57,108 @@ interface ConnectWalletModalProps {
 export default function ConnectWalletModal({ isOpen, onClose }: ConnectWalletModalProps) {
   const [email, setEmail] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isClosing, setIsClosing] = useState(false); // For smooth transition
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  const [isClosing, setIsClosing] = useState(false);
+  
   const router = useRouter();
+  const { 
+    connect, 
+    isConnecting, 
+    error: walletError, 
+    address, 
+    isConnected,
+    walletType,
+    chainId,
+    getNetworkName,
+    formatAddress 
+  } = useMultiWallet();
+
+  // Handle successful connection
+  useEffect(() => {
+    if (isConnected && address) {
+      const networkName = chainId ? getNetworkName(chainId) : 'Unknown';
+      setToastMessage(`WALLET CONNECTED - ${walletType?.toUpperCase()} ON ${networkName.toUpperCase()}`);
+      setToastType('success');
+      setShowToast(true);
+
+      setTimeout(() => {
+        setIsClosing(true);
+        setTimeout(() => {
+          onClose();
+          router.push('/pages/dashboard');
+        }, 500);
+      }, 2000);
+    }
+  }, [isConnected, address, chainId, walletType, onClose, router, getNetworkName]);
+
+  // Handle wallet errors
+  useEffect(() => {
+    if (walletError) {
+      setToastMessage(walletError);
+      setToastType('error');
+      setShowToast(true);
+    }
+  }, [walletError]);
 
   if (!isOpen && !isClosing) return null;
 
-  const navigateToDashboard = () => {
-    console.log(`[${new Date().toISOString()}] Attempting navigation to /pages/dashboard`);
+  const handleWalletConnect = async (selectedWalletType: WalletType) => {
+    if (isConnecting) return;
+
+    console.log(`[WALLET] User selected ${selectedWalletType} wallet`);
+
+    // Check if wallet is installed (except WalletConnect)
+    if (!isWalletInstalled(selectedWalletType) && selectedWalletType !== 'walletconnect') {
+      setToastMessage(`${selectedWalletType.toUpperCase()} NOT INSTALLED`);
+      setToastType('error');
+      setShowToast(true);
+
+      // Open install URL after a delay
+      setTimeout(() => {
+        const installUrl = getInstallUrl(selectedWalletType);
+        if (installUrl) {
+          window.open(installUrl, '_blank');
+        }
+      }, 1500);
+      return;
+    }
+
     try {
-      router.push('/pages/dashboard');
-      console.log(`[${new Date().toISOString()}] Navigation to /pages/dashboard triggered`);
-    } catch (error) {
-      console.error(`[${new Date().toISOString()}] Navigation error:`, error);
+      setToastMessage(`CONNECTING TO ${selectedWalletType.toUpperCase()}...`);
+      setToastType('info');
+      setShowToast(true);
+
+      await connect(selectedWalletType);
+      // Success is handled by useEffect above
+    } catch (err: unknown) {
+      console.error(`[ERROR] Connection failed:`, err);
+      // Error is handled by useEffect above
     }
   };
 
   const handleEmailSubmit = () => {
-    if (email && !isProcessing) {
-      setIsProcessing(true);
-      console.log(`[${new Date().toISOString()}] Email submitted:`, email);
+    if (email && !isConnecting) {
+      setToastMessage('EMAIL AUTHENTICATION - FEATURE COMING SOON');
+      setToastType('info');
       setShowToast(true);
+
       setTimeout(() => {
-        setIsClosing(true); // Start closing animation
+        setIsClosing(true);
         setTimeout(() => {
           onClose();
-          navigateToDashboard();
-          setIsProcessing(false);
-        }, 500); // Match the fade-out duration
-      }, 3000);
+          router.push('/pages/dashboard');
+        }, 500);
+      }, 2000);
     }
   };
 
-  const handleWalletConnect = (walletType: string) => {
-    if (!isProcessing) {
-      setIsProcessing(true);
-      console.log(`[${new Date().toISOString()}] Connecting to:`, walletType);
-      setShowToast(true);
-      setTimeout(() => {
-        setIsClosing(true); // Start closing animation
-        setTimeout(() => {
-          onClose();
-          navigateToDashboard();
-          setIsProcessing(false);
-        }, 500); // Match the fade-out duration
-      }, 3000);
-    }
-  };
-
-  const walletOptions = [
-    { name: 'MetaMask', icon: '🦊' },
-    { name: 'Coinbase Wallet', icon: '🔵' },
-    { name: 'Abstract', icon: '🔷' },
-    { name: 'WalletConnect', icon: '🔗' }
-  ];
+  // Enhanced wallet options with real-time installation status
+  const walletOptionsWithStatus = SUPPORTED_WALLETS.map(wallet => ({
+    ...wallet,
+    isInstalled: isWalletInstalled(wallet.type) || wallet.type === 'walletconnect',
+    isConnecting: isConnecting,
+  }));
 
   return (
     <>
@@ -108,11 +179,16 @@ export default function ConnectWalletModal({ isOpen, onClose }: ConnectWalletMod
               <div className="flex items-center justify-between p-6">
                 <div className="flex items-center gap-3">
                   <h2 className="text-2xl font-bold text-white font-mono">RelAI</h2>
+                  {isConnected && address && (
+                    <div className="text-sm text-green-400 font-mono">
+                      {formatAddress(address)}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={onClose}
                   className="group w-8 h-8 flex items-center justify-center text-gray-400 hover:text-green-400 transition-all duration-200"
-                  disabled={isProcessing}
+                  disabled={isConnecting}
                 >
                   <svg
                     width="16"
@@ -132,31 +208,51 @@ export default function ConnectWalletModal({ isOpen, onClose }: ConnectWalletMod
               <div className="text-center mb-8">
                 <p className="text-gray-400 font-mono text-sm">
                   Connect your wallet to access the<br />
-                  Decentralized AI Agent Network
+                  Cross-Chain AI Agent Reputation Network
                 </p>
               </div>
 
+              {/* Wallet Options */}
               <div className="space-y-3 mb-8">
-                {walletOptions.map((wallet, index) => (
+                {walletOptionsWithStatus.map((wallet, index) => (
                   <button
                     key={wallet.name}
-                    onClick={() => handleWalletConnect(wallet.name)}
-                    disabled={isProcessing}
-                    className="group w-full flex items-center gap-4 p-4 bg-black/40 hover:bg-black/60 rounded border border-gray-600/30 hover:border-green-400/50 transition-all duration-300 backdrop-blur-sm disabled:opacity-50"
+                    onClick={() => handleWalletConnect(wallet.type)}
+                    disabled={isConnecting}
+                    className={`group w-full flex items-center gap-4 p-4 rounded border transition-all duration-300 backdrop-blur-sm disabled:opacity-50 ${
+                      wallet.isInstalled 
+                        ? 'bg-black/40 hover:bg-black/60 border-gray-600/30 hover:border-green-400/50' 
+                        : 'bg-black/20 hover:bg-black/40 border-gray-600/20 hover:border-yellow-400/50'
+                    }`}
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <div className="w-8 h-8 flex items-center justify-center text-xl">{wallet.icon}</div>
-                    <span className="text-white font-mono text-sm flex-1 text-left">{wallet.name}</span>
-                    <div className="text-gray-500 group-hover:text-green-400 transition-colors">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                        className="group-hover:translate-x-1 transition-all"
-                      >
-                        <path d="M8.146 5.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.793 8.5H4.5a.5.5 0 0 1 0-1h6.293L8.146 5.854a.5.5 0 0 1 0-.708z" />
-                      </svg>
+                    
+                    <div className="flex-1 text-left">
+                      <span className="text-white font-mono text-sm block">{wallet.name}</span>
+                      {!wallet.isInstalled && wallet.type !== 'walletconnect' && (
+                        <span className="text-yellow-400 font-mono text-xs">Not installed - Click to install</span>
+                      )}
+                    </div>
+
+                    <div className={`transition-colors ${
+                      wallet.isInstalled 
+                        ? 'text-gray-500 group-hover:text-green-400' 
+                        : 'text-yellow-400'
+                    }`}>
+                      {isConnecting ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                          className="group-hover:translate-x-1 transition-all"
+                        >
+                          <path d="M8.146 5.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.793 8.5H4.5a.5.5 0 0 1 0-1h6.293L8.146 5.854a.5.5 0 0 1 0-.708z" />
+                        </svg>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -177,11 +273,12 @@ export default function ConnectWalletModal({ isOpen, onClose }: ConnectWalletMod
                     placeholder="Enter your email address"
                     className="w-full px-4 py-3 bg-black/40 border border-gray-600/30 rounded text-white placeholder-gray-500 focus:border-green-400/50 focus:outline-none font-mono text-sm transition-all duration-300 backdrop-blur-sm"
                     onKeyPress={(e) => e.key === 'Enter' && handleEmailSubmit()}
+                    disabled={isConnecting}
                   />
                 </div>
                 <button
                   onClick={handleEmailSubmit}
-                  disabled={isProcessing}
+                  disabled={isConnecting}
                   className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-black font-mono text-sm font-bold rounded transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50"
                 >
                   <svg
@@ -196,24 +293,41 @@ export default function ConnectWalletModal({ isOpen, onClose }: ConnectWalletMod
                 </button>
               </div>
 
+              {/* Status Display */}
               <div className="mt-8 flex justify-between items-center text-xs font-mono text-gray-500">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span>NETWORK: ACTIVE</span>
+                  <div className={`w-2 h-2 rounded-full animate-pulse ${
+                    isConnected ? 'bg-green-400' : 
+                    isConnecting ? 'bg-yellow-400' : 'bg-gray-400'
+                  }`}></div>
+                  <span>
+                    STATUS: {isConnected ? 'CONNECTED' : isConnecting ? 'CONNECTING...' : 'READY'}
+                  </span>
                 </div>
                 <div>
-                  <span>CONNECTION: SECURE</span>
+                  <span>SECURITY: ENCRYPTED</span>
                 </div>
               </div>
+
+              {/* Network Display */}
+              {chainId && (
+                <div className="mt-2 text-center">
+                  <span className="text-xs font-mono text-gray-400">
+                    NETWORK: {getNetworkName(chainId).toUpperCase()}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       <ToastNotification
-        message="WALLET CONNECTED - ACCESS GRANTED"
+        message={toastMessage}
         isVisible={showToast}
         onClose={() => setShowToast(false)}
+        type={toastType}
+        duration={toastType === 'error' ? 5000 : 3000}
       />
     </>
   );

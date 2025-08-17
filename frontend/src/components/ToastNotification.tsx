@@ -16,13 +16,13 @@ export interface ToastProps {
 const getToastStyles = (type: ToastType) => {
   switch (type) {
     case 'success':
-      return { bg: 'bg-green-500', icon: '✓' };
+      return { bg: 'bg-green-500', icon: '[OK]' };
     case 'error':
-      return { bg: 'bg-red-500', icon: '✕' };
+      return { bg: 'bg-red-500', icon: '[X]' };
     case 'warning':
-      return { bg: 'bg-yellow-500', icon: '⚠' };
+      return { bg: 'bg-yellow-500', icon: '[!]' };
     case 'info':
-      return { bg: 'bg-blue-500', icon: 'ℹ' };
+      return { bg: 'bg-blue-500', icon: '[i]' };
     default:
       return { bg: 'bg-gray-800', icon: '' };
   }
@@ -58,7 +58,7 @@ export default function ToastNotification({ message, type = 'success', isVisible
       <div className={`${bg} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-64 max-w-md`}>
         <div>{icon}</div>
         <div className="flex-1"><p className="text-sm font-medium">{message}</p></div>
-        <button onClick={handleClose} className="text-white/80 hover:text-white p-1 rounded-full">×</button>
+        <button onClick={handleClose} className="text-white/80 hover:text-white p-1 rounded-full">X</button>
       </div>
     </div>
   );

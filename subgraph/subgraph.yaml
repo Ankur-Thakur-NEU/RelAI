@@ -36,3 +36,35 @@ dataSources:
         - event: MessageReceived(indexed bytes32,indexed uint64,address,bytes)
           handler: handleMessageReceived
       file: ./src/reputation-mirror.ts
+
+  # Demo Data Generator - AI Agents
+  - kind: ethereum
+    name: ReputationDataGenerator
+    network: sepolia
+    source:
+      address: "0x37A854dCf622988D5Abd5f4BfFa738eB0Fc65348"
+      abi: ReputationDataGenerator
+      startBlock: 9002629
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Agent
+        - Transaction
+        - ReputationUpdate
+        - CrossChainMessage
+        - DailyStats
+      abis:
+        - name: ReputationDataGenerator
+          file: ./abis/ReputationDataGenerator.json
+      eventHandlers:
+        - event: AgentRegistered(indexed address,string)
+          handler: handleAgentRegistered
+        - event: TransactionFinalized(indexed address,indexed address,string,int8)
+          handler: handleTransactionFinalized
+        - event: ReputationUpdated(indexed address,string,uint16,uint16)
+          handler: handleReputationUpdated
+        - event: MessageReceived(indexed bytes32,indexed uint64,address,bytes)
+          handler: handleMessageReceived
+      file: ./src/reputation-mirror.ts
