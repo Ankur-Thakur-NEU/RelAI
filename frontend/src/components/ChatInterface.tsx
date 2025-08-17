@@ -51,7 +51,7 @@ export default function ChatInterface() {
         } else if (data.result.output && Array.isArray(data.result.output)) {
           // Handle the complex structure: result.output[].text
           responseText = data.result.output
-            .map((item: any) => item.text || '')
+            .map((item: { text?: string }) => item.text || '')
             .filter((text: string) => text.trim())
             .join('\n\n');
         } else if (data.result.input) {
