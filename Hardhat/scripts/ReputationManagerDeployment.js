@@ -2,20 +2,24 @@
 const hre = require("hardhat");
 
 async function main() {
-  // Get contract factory
-  const ReputationManager = await hre.ethers.getContractFactory(
-    "ReputationManager"
-  );
+  // Compile contracts if needed
+  await hre.run("compile");
 
-  // Deploy contract
-  const registry = await ReputationManager.deploy();
-  await registry.waitForDeployment();
+  // Get the contract factory
+  const ReputationManager = await hre.ethers.getContractFactory("ReputationManager");
 
-  console.log("✅ ReputationManager deployed at:", await registry.getAddress());
+  console.log("Deploying ReputationManager...");
+  const reputationManager = await ReputationManager.deploy(); // deploy returns the instance directly
+
+  // Wait for deployment transaction to be mined
+  await reputationManager.waitForDeployment();
+
+  console.log(`ReputationManager deployed to: ${reputationManager.target}`);
 }
 
-// Run deployment
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

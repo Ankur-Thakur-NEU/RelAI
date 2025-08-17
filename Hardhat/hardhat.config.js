@@ -56,16 +56,8 @@ module.exports = {
         gas: 800000,
         gasPrice: 360000000000, // 360 gwei (Hedera minimum)
       },
-    } : {}),
-    
-    // Other Networks (optional for cross-chain)
-    ...(process.env.SEPOLIA_PRIVATE_KEY ? {
-      sepolia: {
-        url: process.env.SEPOLIA_URL || "https://rpc.sepolia.org",
-        accounts: [process.env.SEPOLIA_PRIVATE_KEY],
-        chainId: 11155111,
-      },
     } : {})
+    
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS === "true",
