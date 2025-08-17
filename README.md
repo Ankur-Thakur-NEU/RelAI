@@ -77,6 +77,12 @@ A **decentralized reputation registry** that:
 
 ---
 
+
+## RelAI Flow Diagram 
+
+<img width="1049" height="573" alt="Screenshot 2025-08-17 at 6 38 31 AM" src="https://github.com/user-attachments/assets/9f4dd7cc-3751-4602-a2a9-c384f59572d2" />
+
+
 ## Current Implementation  
 - ✅ `ReputationManager.sol` deployed on **Hedera**.  
 - ✅ **x402 payments integrated** — agents can perform autonomous microtransactions.  
@@ -134,4 +140,5 @@ We are a team of 5 with expertise across:
 ---
 
 ## License  
-MIT License  
+MIT License 
+ 
