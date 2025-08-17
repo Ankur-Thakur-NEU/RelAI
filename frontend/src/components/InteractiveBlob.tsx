@@ -382,14 +382,19 @@ const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => 
       
       // Cleanup Three.js resources
       try {
-        if (rendererRef.current) {
-          rendererRef.current.dispose();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const renderer = rendererRef.current as any;
+        if (renderer && renderer.dispose) {
+          renderer.dispose();
         }
-        if (blobRef.current?.material) {
-          blobRef.current.material.dispose();
+        
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const blob = blobRef.current as any;
+        if (blob?.material && blob.material.dispose) {
+          blob.material.dispose();
         }
-        if (blobRef.current?.geometry) {
-          blobRef.current.geometry.dispose();
+        if (blob?.geometry && blob.geometry.dispose) {
+          blob.geometry.dispose();
         }
       } catch (error) {
         console.error('Error during cleanup:', error);
