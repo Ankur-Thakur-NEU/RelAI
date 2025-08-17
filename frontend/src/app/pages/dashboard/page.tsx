@@ -63,10 +63,30 @@ const ChatInterface = () => {
 
       const data = await response.json();
       
+      // Parse the complex response structure
+      let responseText = 'No response received';
+      if (data.result) {
+        if (typeof data.result === 'string') {
+          responseText = data.result;
+        } else if (data.result.output && Array.isArray(data.result.output)) {
+          // Handle the complex structure: result.output[].text
+          responseText = data.result.output
+            .map((item: any) => item.text || '')
+            .filter((text: string) => text.trim())
+            .join('\n\n');
+        } else if (data.result.input) {
+          // Fallback to showing the input if no output
+          responseText = `Processed: ${data.result.input}`;
+        } else {
+          // Fallback to stringifying the result
+          responseText = JSON.stringify(data.result, null, 2);
+        }
+      }
+      
       const aiMessage = {
         id: Date.now() + 1,
         type: 'ai' as const,
-        content: data.result || 'No response received',
+        content: responseText,
         timestamp: new Date()
       };
 
