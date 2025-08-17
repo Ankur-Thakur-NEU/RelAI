@@ -1,0 +1,92 @@
+'use client';
+
+import { useState } from 'react';
+
+interface Message {
+  id: number;
+  sender: 'user' | 'ai';
+  text: string;
+}
+
+export default function ChatInterface() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+
+    const newMessage: Message = {
+      id: messages.length + 1,
+      sender: 'user',
+      text: input.trim(),
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+
+    // Simulate AI response (replace with actual API call)
+    setTimeout(() => {
+      setMessages(prev => [
+        ...prev,
+        {
+          id: prev.length + 1,
+          sender: 'ai',
+          text: `AI Response to: "${input.trim()}"`,
+        },
+      ]);
+    }, 800);
+
+    setInput('');
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleSend();
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-[#1e1e1e] rounded-xl shadow-lg overflow-hidden">
+      {/* Chat Header */}
+      <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+        <h3 className="text-white font-semibold">Agent Chat</h3>
+        <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white">
+          💬
+        </div>
+      </div>
+
+      {/* Chat Messages */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-3">
+        {messages.map(msg => (
+          <div
+            key={msg.id}
+            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`px-4 py-2 rounded-lg max-w-xs break-words ${
+                msg.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'
+              }`}
+            >
+              {msg.text}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Input Box */}
+      <div className="px-4 py-3 border-t border-gray-700 flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={handleKeyPress}
+          placeholder="Type your message..."
+          className="flex-1 px-4 py-2 rounded-lg bg-[#2a2a2a] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={handleSend}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}

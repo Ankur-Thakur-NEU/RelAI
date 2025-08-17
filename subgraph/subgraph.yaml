@@ -1,0 +1,38 @@
+specVersion: 0.0.5
+description: Cross-Chain Reputation System - Hackathon Demo
+repository: https://github.com/your-repo/cross-chain-reputation
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  # Sepolia ReputationMirror - Main indexing target
+  - kind: ethereum
+    name: ReputationMirrorSepolia
+    network: sepolia
+    source:
+      address: "0x0F9C8dD513b8dBB12Db9cf0AC44e975ec0a241a7"
+      abi: ReputationMirror
+      startBlock: 6800000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Agent
+        - Transaction
+        - ReputationUpdate
+        - CrossChainMessage
+        - DailyStats
+      abis:
+        - name: ReputationMirror
+          file: ./abis/ReputationMirror.json
+      eventHandlers:
+        - event: AgentRegistered(indexed address,string)
+          handler: handleAgentRegistered
+        - event: TransactionFinalized(indexed address,indexed address,string,int8)
+          handler: handleTransactionFinalized
+        - event: ReputationUpdated(indexed address,string,uint16,uint16)
+          handler: handleReputationUpdated
+        - event: MessageReceived(indexed bytes32,indexed uint64,address,bytes)
+          handler: handleMessageReceived
+      file: ./src/reputation-mirror.ts

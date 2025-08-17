@@ -1,0 +1,24 @@
+{
+  "name": "cross-chain-reputation-subgraph",
+  "version": "1.0.0",
+  "description": "Cross-Chain Reputation System - Hackathon Demo Subgraph",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy-local": "graph create --node http://localhost:8020/ cross-chain-reputation && graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 cross-chain-reputation",
+    "deploy-studio": "graph deploy --studio cross-chain-reputation",
+    "test": "graph test"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.69.0",
+    "@graphprotocol/graph-ts": "0.35.1"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/cross-chain-reputation"
+  },
+  "keywords": ["subgraph", "ethereum", "reputation", "cross-chain", "hackathon"],
+  "author": "Your Team",
+  "license": "MIT"
+}
