@@ -29,7 +29,7 @@ export function useLockContract() {
           contractToUse.getBalance(),
         ]);
 
-        setData({ unlockTime, owner, balance });
+        setData({ unlockTime: Number(unlockTime), owner, balance });
       } catch (err) {
         console.warn("Using mock data due to error:", err);
       }
