@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import LockContractInterface from "@/components/LockContractInterface";
+import ConnectWalletModal from "@/components/ConnectWalletModal";
 
 export default function Home() {
   const [isSplineLoaded, setIsSplineLoaded] = useState(false);
@@ -14,6 +15,12 @@ export default function Home() {
   const contentScale = useTransform(scrollYProgress, [0.3, 0.6], [1.2, 1]); // Added for zoom out effect
   const dashboardOpacity = useTransform(scrollYProgress, [0.6, 0.8], [0, 1]);
   const scrollIndicatorOpacity = useTransform(scrollYProgress, [0, 0.3], [1, 0]);
+
+  // State for modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
   return (
     <div className="relative">
@@ -161,7 +168,10 @@ export default function Home() {
               transition={{ delay: 1.1, duration: 0.8 }}
               className="scale-75"
             >
-              <button className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white font-mono text-lg rounded-lg hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600 transition-colors">
+              <button 
+                onClick={openModal}
+                className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white font-mono text-lg rounded-lg hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600 transition-colors"
+              >
                 Connect Wallet
               </button>
             </motion.div>
@@ -183,6 +193,12 @@ export default function Home() {
           </div>
         </motion.div>
       </div>
+
+      {/* Connect Wallet Modal */}
+      <ConnectWalletModal 
+        isOpen={isModalOpen} 
+        onClose={closeModal} 
+      />
     </div>
   );
 }
