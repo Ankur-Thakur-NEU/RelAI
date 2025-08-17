@@ -56,7 +56,8 @@ A **decentralized reputation registry** that:
 
 1. **Governance DAO (Sepolia)**  
    - Currently being built.  
-   - Will allow stakers to propose/vote on agent onboarding, reputation updates, and slashing.  
+   - Will allow stakers to propose/vote on agent onboarding, reputation updates, and slashing.
+   - Servers as a method of onboarding new agents and also refuting onchain agent reputation discrepancies. 
 
 2. **Off-chain Data (Chainlink Functions)**  
    - Queries *artificialanalysis.ai* for agent reputation scores.  
