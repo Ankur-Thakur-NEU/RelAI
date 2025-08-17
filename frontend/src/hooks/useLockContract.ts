@@ -17,8 +17,11 @@ export function useLockContract() {
         if (!window.ethereum) {
           throw new Error('No ethereum provider found');
         }
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const contractToUse = createLockContract(provider);
+        const contractToUse = await createLockContract();
+        
+        if (!contractToUse) {
+          throw new Error('Failed to create contract');
+        }
 
         const [unlockTime, owner, balance] = await Promise.all([
           contractToUse.getUnlockTime(),
