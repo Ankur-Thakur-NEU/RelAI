@@ -24,27 +24,27 @@ export const SUPPORTED_WALLETS: WalletInfo[] = [
   {
     name: 'MetaMask',
     type: 'metamask',
-    icon: 'M',
+    icon: 'svg', // Will be handled by component
     description: 'Connect with MetaMask wallet',
     installUrl: 'https://metamask.io/download/',
   },
   {
     name: 'Coinbase Wallet',
     type: 'coinbase',
-    icon: 'C',
+    icon: 'svg', // Will be handled by component
     description: 'Connect with Coinbase Wallet',
     installUrl: 'https://www.coinbase.com/wallet',
   },
   {
     name: 'WalletConnect',
     type: 'walletconnect',
-    icon: 'W',
+    icon: 'svg', // Will be handled by component
     description: 'Connect with WalletConnect',
   },
   {
     name: 'Abstract',
     type: 'abstract',
-    icon: 'A',
+    icon: 'svg', // Will be handled by component
     description: 'Connect with Abstract Wallet',
   },
 ];
