@@ -235,7 +235,7 @@ export default function Home() {
                 <button 
                   onClick={openModal}
                   disabled={isConnecting}
-                  className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white font-mono text-lg rounded-lg hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 text-white font-mono text-lg rounded-lg hover:bg-gradient-to-r hover:from-green-500 hover:to-blue-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isConnecting ? (
                     <>
@@ -262,7 +262,7 @@ export default function Home() {
                   </div>
                   <button
                     onClick={() => router.push('/pages/dashboard')}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-mono text-lg rounded-lg transition-colors flex items-center gap-2"
+                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-mono text-lg rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
                     Access Dashboard
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">

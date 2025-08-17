@@ -27,9 +27,78 @@ const CountUp = ({ end, duration }: { end: number; duration: number }) => {
   return <span>{Math.min(count, end)}</span>;
 };
 
-// Enhanced ChatInterface component with wallet integration
+// Enhanced ChatInterface component with wallet integration and API calls
 const ChatInterface = () => {
   const { isConnected, walletType, chainId, getNetworkName } = useMultiWallet();
+  const [chatInput, setChatInput] = useState('');
+  const [messages, setMessages] = useState<Array<{id: number; type: 'user' | 'ai'; content: string; timestamp: Date}>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleExecuteCommand = async () => {
+    if (!chatInput.trim() || !isConnected || isLoading) return;
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user' as const,
+      content: chatInput.trim(),
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+    setChatInput('');
+
+    try {
+      const response = await fetch('/api/buyer-agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input: userMessage.content }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      const aiMessage = {
+        id: Date.now() + 1,
+        type: 'ai' as const,
+        content: data.result || 'No response received',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('[CHAT] API call failed:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: 'ai' as const,
+        content: `Error: Failed to process command. ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleExecuteCommand();
+    }
+  };
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    const chatContainer = document.getElementById('chat-messages');
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  }, [messages, isLoading]);
 
   return (
     <div className="h-full flex flex-col justify-end">
@@ -47,7 +116,8 @@ const ChatInterface = () => {
           </div>
         </div>
         
-        <div className="space-y-4 mb-6 h-64 overflow-y-auto">
+        <div className="space-y-4 mb-6 h-64 overflow-y-auto" id="chat-messages">
+          {/* System initialization message */}
           <div className="flex gap-3">
             <div className="w-6 h-6 bg-gradient-to-r from-green-400 to-blue-500 rounded flex items-center justify-center text-black text-xs font-bold font-mono">AI</div>
             <div className="bg-black/60 backdrop-blur-sm rounded border border-gray-600/30 p-3 flex-1">
@@ -58,7 +128,8 @@ const ChatInterface = () => {
                   <>
                     &gt; WALLET: {walletType?.toUpperCase()} Connected<br/>
                     &gt; NETWORK: {chainId ? getNetworkName(chainId) : 'Unknown'}<br/>
-                    &gt; Ready for agent interactions and cross-chain operations
+                    &gt; Ready for agent interactions and cross-chain operations<br/>
+                    &gt; Type your command below and click EXEC or press Enter
                   </>
                 ) : (
                   '> Please connect your wallet to access agent management features'
@@ -67,56 +138,36 @@ const ChatInterface = () => {
             </div>
           </div>
           
-          {isConnected ? (
-            <>
-              <div className="flex gap-3 justify-end">
-                <div className="bg-black/60 backdrop-blur-sm rounded border border-gray-600/30 p-3 max-w-xs">
-                  <p className="text-white font-mono text-sm">show cross-chain reputation metrics</p>
-                </div>
-                <div className="w-6 h-6 bg-gray-600 rounded flex items-center justify-center text-white text-xs font-bold font-mono">U</div>
-              </div>
-              
-              <div className="flex gap-3">
+          {/* Dynamic chat messages */}
+          {messages.map((message) => (
+            <div key={message.id} className={`flex gap-3 ${message.type === 'user' ? 'justify-end' : ''}`}>
+              {message.type === 'ai' && (
                 <div className="w-6 h-6 bg-gradient-to-r from-green-400 to-blue-500 rounded flex items-center justify-center text-black text-xs font-bold font-mono">AI</div>
-                <div className="bg-black/60 backdrop-blur-sm rounded border border-gray-600/30 p-3 flex-1">
-                  <p className="text-green-400 font-mono text-sm">
-                    &gt; RETRIEVING CROSS-CHAIN REPUTATION DATA...<br/>
-                    &gt; HEDERA AGENTS: 5 ACTIVE, AVG REPUTATION: 87.6<br/>
-                    &gt; SEPOLIA MIRROR: SYNCHRONIZED, 10 TRANSACTIONS<br/>
-                    &gt; SUBGRAPH: https://thegraph.com/studio/subgraph/rel-aidao/<br/>
-                    &gt; Use sidebar controls for detailed agent analysis
-                  </p>
+              )}
+              <div className={`bg-black/60 backdrop-blur-sm rounded border border-gray-600/30 p-3 ${message.type === 'user' ? 'max-w-xs' : 'flex-1'}`}>
+                <p className={`font-mono text-sm ${message.type === 'user' ? 'text-white' : 'text-green-400'}`}>
+                  {message.type === 'ai' && '> '}
+                  {message.content}
+                </p>
+                <div className="text-xs text-gray-500 mt-1">
+                  {message.timestamp.toLocaleTimeString()}
                 </div>
               </div>
+              {message.type === 'user' && (
+                <div className="w-6 h-6 bg-gray-600 rounded flex items-center justify-center text-white text-xs font-bold font-mono">U</div>
+              )}
+            </div>
+          ))}
 
-              <div className="flex gap-3 justify-end">
-                <div className="bg-black/60 backdrop-blur-sm rounded border border-gray-600/30 p-3 max-w-xs">
-                  <p className="text-white font-mono text-sm">register new AI agent</p>
-                </div>
-                <div className="w-6 h-6 bg-gray-600 rounded flex items-center justify-center text-white text-xs font-bold font-mono">U</div>
-              </div>
-              
-              <div className="flex gap-3">
-                <div className="w-6 h-6 bg-gradient-to-r from-green-400 to-blue-500 rounded flex items-center justify-center text-black text-xs font-bold font-mono">AI</div>
-                <div className="bg-black/60 backdrop-blur-sm rounded border border-gray-600/30 p-3 flex-1">
-                  <p className="text-green-400 font-mono text-sm">
-                    &gt; AGENT REGISTRATION PROTOCOL ACTIVATED<br/>
-                    &gt; Current network: {chainId ? getNetworkName(chainId) : 'Unknown'}<br/>
-                    &gt; Registration will deploy cross-chain reputation tracking<br/>
-                    &gt; Estimated gas cost: ~0.01 ETH
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : (
+          {/* Loading message */}
+          {isLoading && (
             <div className="flex gap-3">
               <div className="w-6 h-6 bg-gradient-to-r from-green-400 to-blue-500 rounded flex items-center justify-center text-black text-xs font-bold font-mono">AI</div>
               <div className="bg-black/60 backdrop-blur-sm rounded border border-gray-600/30 p-3 flex-1">
-                <p className="text-yellow-400 font-mono text-sm">
-                  &gt; WALLET CONNECTION REQUIRED<br/>
-                  &gt; Cross-chain features require MetaMask, Coinbase, or WalletConnect<br/>
-                  &gt; Click &quot;Connect Wallet&quot; in the header to continue
-                </p>
+                <div className="flex items-center gap-2 text-yellow-400 font-mono text-sm">
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  &gt; Processing command...
+                </div>
               </div>
             </div>
           )}
@@ -125,19 +176,30 @@ const ChatInterface = () => {
         <div className="flex gap-2 border-t border-gray-600/30 pt-4">
           <input 
             type="text" 
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyPress={handleKeyPress}
             placeholder={isConnected ? "> Enter command or query..." : "> Connect wallet to enable AI interactions..."}
             className="flex-1 px-4 py-2 bg-black/60 border border-gray-600/30 rounded text-green-400 placeholder-gray-500 focus:border-green-400/50 focus:outline-none font-mono text-sm transition-all duration-300"
-            disabled={!isConnected}
+            disabled={!isConnected || isLoading}
           />
           <button 
-            className={`px-4 py-2 rounded transition-all duration-300 font-mono font-bold text-sm ${
-              isConnected 
+            onClick={handleExecuteCommand}
+            className={`px-4 py-2 rounded transition-all duration-300 font-mono font-bold text-sm flex items-center gap-2 ${
+              isConnected && !isLoading
                 ? 'bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-black'
                 : 'bg-gray-600 text-gray-400 cursor-not-allowed'
             }`}
-            disabled={!isConnected}
+            disabled={!isConnected || isLoading || !chatInput.trim()}
           >
-            EXEC
+            {isLoading ? (
+              <>
+                <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin"></div>
+                EXEC
+              </>
+            ) : (
+              'EXEC'
+            )}
           </button>
         </div>
       </div>
