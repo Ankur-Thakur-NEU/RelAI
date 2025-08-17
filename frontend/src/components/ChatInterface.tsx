@@ -11,9 +11,10 @@ interface Message {
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
     const newMessage: Message = {
       id: messages.length + 1,
@@ -22,20 +23,48 @@ export default function ChatInterface() {
     };
 
     setMessages(prev => [...prev, newMessage]);
-
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: prev.length + 1,
-          sender: 'ai',
-          text: `AI Response to: "${input.trim()}"`,
-        },
-      ]);
-    }, 800);
-
+    const userInput = input.trim();
     setInput('');
+    setIsLoading(true);
+
+    try {
+      // Call the buyer-agent API
+      const response = await fetch('/api/buyer-agent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input: userInput }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Add AI response
+      const aiMessage: Message = {
+        id: messages.length + 2,
+        sender: 'ai',
+        text: data.result || 'No response received',
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('API call failed:', error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        sender: 'ai',
+        text: `Error: Failed to process command. ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -77,14 +106,20 @@ export default function ChatInterface() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyPress}
-          placeholder="Type your message..."
+          placeholder="Type your command..."
           className="flex-1 px-4 py-2 rounded-lg bg-[#2a2a2a] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
         />
         <button
           onClick={handleSend}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          disabled={isLoading || !input.trim()}
+          className={`px-4 py-2 rounded-lg transition-colors font-mono font-bold ${
+            isLoading || !input.trim()
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
         >
-          Send
+          {isLoading ? 'EXEC...' : 'EXEC'}
         </button>
       </div>
     </div>

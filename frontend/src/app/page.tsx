@@ -229,7 +229,7 @@ export default function Home() {
               initial={{ opacity: 0, scale: 1.2 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 1.1, duration: 0.8 }}
-              className="scale-75"
+              className="scale-75 flex justify-center"
             >
               {!isConnected ? (
                 <button 
