@@ -121,7 +121,8 @@ export class MultiWalletConnector {
 
       // Fallback to Coinbase Wallet SDK
       this.coinbaseWallet = getCoinbaseWallet();
-      const coinbaseProvider = this.coinbaseWallet.makeWeb3Provider();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const coinbaseProvider = (this.coinbaseWallet as any).makeWeb3Provider();
       
       await coinbaseProvider.request({
         method: 'eth_requestAccounts'
@@ -294,7 +295,8 @@ export class MultiWalletConnector {
   // Disconnect wallet
   async disconnect(): Promise<void> {
     if (this.coinbaseWallet) {
-      await this.coinbaseWallet.disconnect();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (this.coinbaseWallet as any).disconnect();
     }
 
     this.provider = null;
