@@ -79,7 +79,7 @@ export default function LockContractInterface() {
           <div className="p-4 bg-purple-50 rounded-lg">
             <h4 className="text-sm font-medium text-purple-900 mb-1">Unlock Time</h4>
             <p className="text-sm text-purple-700">
-              {formatTimestamp(unlockTime)}
+              {formatTimestamp(BigInt(unlockTime))}
             </p>
           </div>
 
