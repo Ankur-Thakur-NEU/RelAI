@@ -1,8 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ToastNotification from './ToastNotification';
+
+// ToastNotification component
+const ToastNotification = ({ message = 'WALLET CONNECTED - ACCESS GRANTED', isVisible, onClose, duration = 3000 }) => {
+  useEffect(() => {
+    if (isVisible && duration) {
+      const timer = setTimeout(onClose, duration);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, duration, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-[60] animate-in slide-in-from-top-2 duration-300">
+      <div className="bg-black/40 backdrop-blur-xl border border-gray-600/30 rounded-lg p-4 shadow-2xl">
+        <div className="flex items-center gap-3 text-green-400">
+          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+          <span className="font-mono text-sm">{message}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface ConnectWalletModalProps {
   isOpen: boolean;
@@ -11,157 +33,187 @@ interface ConnectWalletModalProps {
 
 export default function ConnectWalletModal({ isOpen, onClose }: ConnectWalletModalProps) {
   const [email, setEmail] = useState('');
-  const [showWalletConnect, setShowWalletConnect] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isClosing, setIsClosing] = useState(false); // For smooth transition
   const router = useRouter();
 
-  if (!isOpen) return null;
+  if (!isOpen && !isClosing) return null;
 
   const navigateToDashboard = () => {
-    router.push('/pages/dashboard');
+    console.log(`[${new Date().toISOString()}] Attempting navigation to /pages/dashboard`);
+    try {
+      router.push('/pages/dashboard');
+      console.log(`[${new Date().toISOString()}] Navigation to /pages/dashboard triggered`);
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}] Navigation error:`, error);
+    }
   };
 
   const handleEmailSubmit = () => {
-    if (email) {
-      console.log('Email submitted:', email);
+    if (email && !isProcessing) {
+      setIsProcessing(true);
+      console.log(`[${new Date().toISOString()}] Email submitted:`, email);
       setShowToast(true);
       setTimeout(() => {
-        onClose();
-        navigateToDashboard();
-      }, 500);
+        setIsClosing(true); // Start closing animation
+        setTimeout(() => {
+          onClose();
+          navigateToDashboard();
+          setIsProcessing(false);
+        }, 500); // Match the fade-out duration
+      }, 3000);
     }
   };
 
   const handleWalletConnect = (walletType: string) => {
-    console.log('Connecting to:', walletType);
-    setShowToast(true);
-    setTimeout(() => {
-      onClose();
-      navigateToDashboard();
-    }, 500);
+    if (!isProcessing) {
+      setIsProcessing(true);
+      console.log(`[${new Date().toISOString()}] Connecting to:`, walletType);
+      setShowToast(true);
+      setTimeout(() => {
+        setIsClosing(true); // Start closing animation
+        setTimeout(() => {
+          onClose();
+          navigateToDashboard();
+          setIsProcessing(false);
+        }, 500); // Match the fade-out duration
+      }, 3000);
+    }
   };
 
-  const handleBackToOptions = () => {
-    setShowWalletConnect(false);
-  };
+  const walletOptions = [
+    { name: 'MetaMask', icon: '🦊' },
+    { name: 'Coinbase Wallet', icon: '🔵' },
+    { name: 'Abstract', icon: '🔷' },
+    { name: 'WalletConnect', icon: '🔗' }
+  ];
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-        <div className="bg-[#1a1a1a] rounded-xl shadow-2xl w-full max-w-lg mx-4 border border-gray-700/50">
-          <div className="flex items-center justify-between p-6 border-b border-gray-700/50">
-            <div className="flex items-center gap-3">
-              {showWalletConnect && (
-                <button 
-                  onClick={handleBackToOptions}
-                  className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white transition-colors mr-2"
+      {/* Backdrop with fade-out animation */}
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-500 ${
+          isClosing ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        <div
+          className={`relative w-full max-w-lg mx-4 animate-in zoom-in-95 duration-300 transition-opacity duration-500 ${
+            isClosing ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          <div className="bg-black/60 backdrop-blur-xl rounded-lg border border-gray-600/30 shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="relative border-b border-gray-600/30">
+              <div className="flex items-center justify-between p-6">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-bold text-white font-mono">RelAI</h2>
+                </div>
+                <button
+                  onClick={onClose}
+                  className="group w-8 h-8 flex items-center justify-center text-gray-400 hover:text-green-400 transition-all duration-200"
+                  disabled={isProcessing}
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                    <path d="M8.146 5.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.793 8.5H4.5a.5.5 0 0 1 0-1h6.293L8.146 5.854a.5.5 0 0 1 0-.708z" transform="rotate(180 8 8)"/>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className="group-hover:rotate-90 transition-transform"
+                  >
+                    <path d="M12.207 4.207a1 1 0 0 0-1.414-1.414L8 5.586 5.207 2.793a1 1 0 0 0-1.414 1.414L6.586 7l-2.793 2.793a1 1 0 1 0 1.414 1.414L8 8.414l2.793 2.793a1 1 0 0 0 1.414-1.414L9.414 7l2.793-2.793z" />
                   </svg>
                 </button>
-              )}
-              {/* <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                R
-              </div> */}
-              <h2 className="text-xl font-semibold text-white">
-                {showWalletConnect ? 'Connect Wallet' : 'Connect with RelAI'}
-              </h2>
-            </div>
-            <button 
-              onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M12.207 4.207a1 1 0 0 0-1.414-1.414L8 5.586 5.207 2.793a1 1 0 0 0-1.414 1.414L6.586 7l-2.793 2.793a1 1 0 1 0 1.414 1.414L8 8.414l2.793 2.793a1 1 0 0 0 1.414-1.414L9.414 7l2.793-2.793z"/>
-              </svg>
-            </button>
-          </div>
-
-          <div className="p-6">
-            {showWalletConnect ? (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <button 
-                    onClick={handleBackToOptions}
-                    className="text-sm text-gray-400 hover:text-white transition-colors"
-                  >
-                    ← Back to wallet options
-                  </button>
-                </div>
               </div>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  <button 
-                    onClick={() => handleWalletConnect('MetaMask')}
-                    className="w-full flex items-center gap-4 p-4 bg-[#202020] hover:bg-[#2a2a2a] rounded-lg transition-colors border border-gray-700/30"
-                  >
-                    <img src="/logo/metamask_wallet.svg" alt="MetaMask" className="w-8 h-8" />
-                    <span className="text-white font-medium">MetaMask</span>
-                  </button>
+            </div>
 
-                  <button 
-                    onClick={() => handleWalletConnect('Coinbase')}
-                    className="w-full flex items-center gap-4 p-4 bg-[#202020] hover:bg-[#2a2a2a] rounded-lg transition-colors border border-gray-700/30"
-                  >
-                    <img src="/logo/coinbase_wallet.svg" alt="Coinbase" className="w-8 h-8" />
-                    <span className="text-white font-medium">Coinbase Wallet</span>
-                  </button>
+            {/* Content */}
+            <div className="p-6">
+              <div className="text-center mb-8">
+                <p className="text-gray-400 font-mono text-sm">
+                  Connect your wallet to access the<br />
+                  Decentralized AI Agent Network
+                </p>
+              </div>
 
-                  <button 
-                    onClick={() => handleWalletConnect('Abstract')}
-                    className="w-full flex items-center gap-4 p-4 bg-[#202020] hover:bg-[#2a2a2a] rounded-lg transition-colors border border-gray-700/30"
+              <div className="space-y-3 mb-8">
+                {walletOptions.map((wallet, index) => (
+                  <button
+                    key={wallet.name}
+                    onClick={() => handleWalletConnect(wallet.name)}
+                    disabled={isProcessing}
+                    className="group w-full flex items-center gap-4 p-4 bg-black/40 hover:bg-black/60 rounded border border-gray-600/30 hover:border-green-400/50 transition-all duration-300 backdrop-blur-sm disabled:opacity-50"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <img src="/logo/abstract_wallet.svg" alt="Abstract" className="w-8 h-8" />
-                    <span className="text-white font-medium">Abstract</span>
+                    <div className="w-8 h-8 flex items-center justify-center text-xl">{wallet.icon}</div>
+                    <span className="text-white font-mono text-sm flex-1 text-left">{wallet.name}</span>
+                    <div className="text-gray-500 group-hover:text-green-400 transition-colors">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                        className="group-hover:translate-x-1 transition-all"
+                      >
+                        <path d="M8.146 5.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.793 8.5H4.5a.5.5 0 0 1 0-1h6.293L8.146 5.854a.5.5 0 0 1 0-.708z" />
+                      </svg>
+                    </div>
                   </button>
+                ))}
+              </div>
 
-                  <button 
-                    onClick={() => handleWalletConnect('WalletConnect')}
-                    className="w-full flex items-center gap-4 p-4 bg-[#202020] hover:bg-[#2a2a2a] rounded-lg transition-colors border border-gray-700/30"
-                  >
-                    <img src="/logo/walletconnect_wallet.svg" alt="WalletConnect" className="w-8 h-8" />
-                    <span className="text-white font-medium">WalletConnect</span>
-                  </button>
-                </div>
+              <div className="flex items-center my-8">
+                <div className="flex-1 h-px bg-gray-600/30"></div>
+                <span className="px-3 text-xs text-gray-500 font-mono">OR CONTINUE WITH EMAIL</span>
+                <div className="flex-1 h-px bg-gray-600/30"></div>
+              </div>
 
-                <div className="flex items-center my-6">
-                  <div className="flex-1 border-t border-gray-700"></div>
-                  <span className="px-3 text-sm text-gray-400">or continue with email</span>
-                  <div className="flex-1 border-t border-gray-700"></div>
-                </div>
-                <div className="flex gap-2">
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Continue with email"
-                    className="flex-1 px-4 py-3 bg-[#202020] border border-gray-700/50 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
+                    placeholder="Enter your email address"
+                    className="w-full px-4 py-3 bg-black/40 border border-gray-600/30 rounded text-white placeholder-gray-500 focus:border-green-400/50 focus:outline-none font-mono text-sm transition-all duration-300 backdrop-blur-sm"
                     onKeyPress={(e) => e.key === 'Enter' && handleEmailSubmit()}
                   />
-                  <button 
-                    onClick={handleEmailSubmit}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M8.146 5.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.793 8.5H4.5a.5.5 0 0 1 0-1h6.293L8.146 5.854a.5.5 0 0 1 0-.708z"/>
-                    </svg>
-                  </button>
                 </div>
-              </>
-            )}
+                <button
+                  onClick={handleEmailSubmit}
+                  disabled={isProcessing}
+                  className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-black font-mono text-sm font-bold rounded transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className="group-hover:translate-x-0.5 transition-transform"
+                  >
+                    <path d="M8.146 5.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.793 8.5H4.5a.5.5 0 0 1 0-1h6.293L8.146 5.854a.5.5 0 0 1 0-.708z" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mt-8 flex justify-between items-center text-xs font-mono text-gray-500">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span>NETWORK: ACTIVE</span>
+                </div>
+                <div>
+                  <span>CONNECTION: SECURE</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       <ToastNotification
-        message="Wallet connected 🎉"
-        type="success"
+        message="WALLET CONNECTED - ACCESS GRANTED"
         isVisible={showToast}
         onClose={() => setShowToast(false)}
-        duration={3000}
-        position="top-right"
       />
     </>
   );
