@@ -180,7 +180,10 @@ contract ReputationMirror is CCIPReceiver, OwnerIsCreator {
         s_lastReceivedData = any2EvmMessage.data;
 
 		uint8 command = uint8(any2EvmMessage.data[0]);
-		bytes memory rest = any2EvmMessage.data[1:];
+		bytes memory rest = new bytes(any2EvmMessage.data.length - 1);
+		for (uint i = 1; i < any2EvmMessage.data.length; i++) {
+			rest[i - 1] = any2EvmMessage.data[i];
+		}
 
 		if (command == 1) {
 			(address agent, string memory tag, uint16 initRep) = abi.decode(rest, (address,string,uint16));
@@ -195,7 +198,7 @@ contract ReputationMirror is CCIPReceiver, OwnerIsCreator {
 
 			reputation[seller] = newRep;
 
-			emit TransactionFinalized(buyer, seller, x402Ref, int8(newRep) - int8(oldRep));
+			emit TransactionFinalized(buyer, seller, x402Ref, int8(int16(newRep) - int16(oldRep)));
     		emit ReputationUpdated(seller, x402Ref, oldRep, newRep);
 		}
 
