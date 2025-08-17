@@ -1,0 +1,64 @@
+# Cross-Chain Reputation System - Minimal Hackathon Subgraph
+
+type Agent @entity {
+  id: ID! # agent address
+  address: Bytes!
+  tag: String
+  currentReputation: BigInt!
+  registrationTimestamp: BigInt!
+  totalTransactions: BigInt!
+  averageRating: BigDecimal!
+  
+  # Relations
+  transactions: [Transaction!]! @derivedFrom(field: "seller")
+  reputationUpdates: [ReputationUpdate!]! @derivedFrom(field: "agent")
+}
+
+type Transaction @entity {
+  id: ID! # transaction hash + log index
+  buyer: Bytes!
+  seller: Agent!
+  x402Ref: String!
+  rating: Int!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+  
+  # Reputation impact
+  oldReputation: BigInt!
+  newReputation: BigInt!
+  reputationChange: BigInt!
+}
+
+type ReputationUpdate @entity {
+  id: ID! # transaction hash + log index
+  agent: Agent!
+  x402Ref: String!
+  oldReputation: BigInt!
+  newReputation: BigInt!
+  change: BigInt!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type CrossChainMessage @entity {
+  id: ID! # messageId
+  messageId: Bytes!
+  sourceChain: BigInt!
+  destinationChain: BigInt!
+  sender: Bytes!
+  receiver: Bytes!
+  timestamp: BigInt!
+  transactionHash: Bytes!
+  messageType: String
+  status: String!
+}
+
+# Daily statistics for hackathon demo
+type DailyStats @entity {
+  id: ID! # date (YYYY-MM-DD)
+  date: String!
+  newAgents: BigInt!
+  newTransactions: BigInt!
+  totalMessages: BigInt!
+  averageRating: BigDecimal!
+}
