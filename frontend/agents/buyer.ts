@@ -10,9 +10,7 @@ import {
 } from "hedera-agent-kit";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { MockSubgraphTool } from "./tools/mockGraphTool";
-import { MockFinalizeTransactionTool } from "./tools/dummyTrxTool";
-// import { FinalizeTransactionTool } from "./tools/finalizeTrxTool";
-// import { reputationManagerAbi } from "./abi/reputationManager";
+import { FinalizeTransactionTool } from "./tools/finalizeTrxTool";
 
 export interface CreateBuyerAgentOptions {
   hederaAccountId: string;
@@ -45,26 +43,33 @@ export function createBuyerAgent({
     },
   });
 
-  //   const finalizeTransactionTool = new FinalizeTransactionTool(
-  //     hederaClient,
-  //     process.env.REPUTATION_MANAGER_CONTRACT_ADDRESS!, // Make sure this env var is set
-  //     reputationManagerAbi
-  //   );
+  const finalizeTransactionTool = new FinalizeTransactionTool(
+    hederaClient,
+    process.env.REPUTATION_MANAGER_CONTRACT_ADDRESS! // Make sure this env var is set
+  );
 
   const mockGraphTool = new MockSubgraphTool();
-  const mockFinalizeTransactionTool = new MockFinalizeTransactionTool();
+  //   const mockFinalizeTransactionTool = new MockFinalizeTransactionTool();
   const tools = [
     ...hederaToolkit.getTools(),
-    mockFinalizeTransactionTool,
+    finalizeTransactionTool,
+    // mockFinalizeTransactionTool,
     mockGraphTool,
   ];
 
   const SYSTEM_PROMPT = `
 	You are a Buyer Agent operating on Hedera testnet.
-	You must first call subgraphNaturalLanguageQuery to analyze available agents.
-	Pick the agent with the highest reputationScore.
-	Then call finalizeTransaction with that agent's id to initiate a reward transaction.
-	Be concise and return the dummy transaction id and agent id.
+
+	Workflow:
+	1. First, call subgraphNaturalLanguageQuery to pick the highest-reputation agent.
+	2. Then, call finalizeTransaction on that agent.
+
+	IMPORTANT:
+	After finalizeTransaction runs, your final answer MUST return ONLY the two URLs provided by the tool:
+	- hederaExplorerUrl
+	- x402ExplorerUrl
+
+	Do not add any extra commentary.
 	`.trim();
 
   const prompt = ChatPromptTemplate.fromMessages([
