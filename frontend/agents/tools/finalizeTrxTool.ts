@@ -44,7 +44,8 @@ export class FinalizeTransactionTool extends Tool {
       const submitTx = await tx.execute(this.client);
       const receipt = await submitTx.getReceipt(this.client);
 
-      const hederaExplorerUrl = `https://explorer.arkhia.io/testnet/contract/${this.contractId}`;
+      const hederaExplorerUrl =
+        "https://explorer.arkhia.io/testnet/contract/0.0.6595777";
       const x402ExplorerUrl = `https://sepolia.basescan.org/tx/${x402Ref}`;
 
       return {
