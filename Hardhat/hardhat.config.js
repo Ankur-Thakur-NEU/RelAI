@@ -65,15 +65,7 @@ module.exports = {
         accounts: [process.env.SEPOLIA_PRIVATE_KEY],
         chainId: 11155111,
       },
-    } : {}),
-    
-    ...(process.env.MAINNET_PRIVATE_KEY ? {
-      mainnet: {
-        url: process.env.MAINNET_URL || "https://ethereum.publicnode.com",
-        accounts: [process.env.MAINNET_PRIVATE_KEY],
-        chainId: 1,
-      },
-    } : {}),
+    } : {})
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS === "true",
