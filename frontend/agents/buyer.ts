@@ -9,17 +9,16 @@ import {
   AgentMode,
 } from "hedera-agent-kit";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { ToolInterface } from "@langchain/core/tools";
+import { MockSubgraphTool } from "./tools/dummyTool";
+import { MockFinalizeTransactionTool } from "./tools/dummyTrxTool";
+// import { FinalizeTransactionTool } from "./tools/finalizeTrxTool";
+// import { reputationManagerAbi } from "./abi/reputationManager";
+// import { MCPSubgraphTool } from "./tools/subgraphTool";
 
 export interface CreateBuyerAgentOptions {
   hederaAccountId: string;
   hederaPrivateKey: string;
   llm: BaseChatModel;
-  /**
-   * Any extra tools you want to include alongside Hedera toolkit tools,
-   * e.g. your subgraph tool or contract invoke tool.
-   */
-  extraTools?: ToolInterface[];
 }
 
 function createHederaClient(accountId: string, privateKey: string): Client {
@@ -32,7 +31,6 @@ export function createBuyerAgent({
   hederaAccountId,
   hederaPrivateKey,
   llm,
-  extraTools = [],
 }: CreateBuyerAgentOptions): AgentExecutor {
   const hederaClient = createHederaClient(hederaAccountId, hederaPrivateKey);
 
@@ -48,17 +46,39 @@ export function createBuyerAgent({
     },
   });
 
-  const tools = [...hederaToolkit.getTools(), ...extraTools];
+  //   const finalizeTransactionTool = new FinalizeTransactionTool(
+  //     hederaClient,
+  //     process.env.REPUTATION_MANAGER_CONTRACT_ADDRESS!, // Make sure this env var is set
+  //     reputationManagerAbi
+  //   );
+
+  //   const subgraphNLTool = new MCPSubgraphTool(
+  //     "https://subgraphs.mcp.thegraph.com/sse",
+  //     process.env.SUBGRAPH_GATEWAY_API_KEY!
+  //   );
+
+  const dummyTool = new MockSubgraphTool();
+  const dummyTrxTool = new MockFinalizeTransactionTool();
+  const tools = [
+    ...hederaToolkit.getTools(),
+    // finalizeTransactionTool,
+    // subgraphNLTool,
+    dummyTool,
+    dummyTrxTool,
+  ];
 
   const SYSTEM_PROMPT = `
 	You are a Buyer Agent operating on Hedera testnet.
-	- You can query Hedera state and submit transactions via toolkit tools.
-	- You may also call custom tools (e.g., subgraph, hireAndExecute).
-	- Be concise and return concrete results. If you perform chain actions, summarize tx IDs.
-  `.trim();
+	You must first call subgraphNaturalLanguageQuery to analyze available agents.
+	Pick the agent with the highest reputationScore.
+	Then call finalizeTransaction with that agent's id to initiate a reward transaction.
+	Be concise and return the dummy transaction id and agent id.
+	`.trim();
+
   const prompt = ChatPromptTemplate.fromMessages([
     ["system", SYSTEM_PROMPT],
     ["human", "{input}"],
+    ["ai", "{agent_scratchpad}"],
   ]);
 
   const agent = createToolCallingAgent({

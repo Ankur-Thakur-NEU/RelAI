@@ -1,6 +1,7 @@
 import "server-only";
 
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatAnthropic } from "@langchain/anthropic";
+
 import { createBuyerAgent } from "./buyer";
 import type { AgentExecutor } from "langchain/agents";
 
@@ -11,10 +12,8 @@ export async function getBuyerAgent() {
   buyer = createBuyerAgent({
     hederaAccountId: process.env.HEDERA_ACCOUNT_ID!,
     hederaPrivateKey: process.env.HEDERA_PRIVATE_KEY!,
-    llm: new ChatOpenAI({
-      apiKey: process.env.OPENAI_API_KEY!,
-      model: "gpt-4o-mini",
-      temperature: 0.2,
+    llm: new ChatAnthropic({
+      model: "claude-3-5-sonnet-20241022",
     }),
   });
   return buyer;
