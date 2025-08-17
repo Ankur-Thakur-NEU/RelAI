@@ -132,7 +132,7 @@ export const useMultiWallet = () => {
 
     // Add event listeners with proper type handling
     const onAccountsChanged = (...args: unknown[]) => handleAccountsChanged(args[0] as string[]);
-    const onChainChanged = (...args: unknown[]) => handleChainChanged(args[0] as string);
+    const onChainChanged = (...args: unknown[]) => handleChainChanged();
     const onDisconnect = (...args: unknown[]) => handleDisconnect();
 
     window.ethereum.on('accountsChanged', onAccountsChanged);

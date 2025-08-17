@@ -53,12 +53,16 @@ export const useWallet = () => {
 
     const handleChainChanged = () => updateWalletState();
 
-    window.ethereum.on("accountsChanged", handleAccountsChanged);
-    window.ethereum.on("chainChanged", handleChainChanged);
+    // Create wrapper functions for proper event handler typing
+    const onAccountsChanged = (...args: unknown[]) => handleAccountsChanged(args[0] as string[]);
+    const onChainChanged = (...args: unknown[]) => handleChainChanged();
+
+    window.ethereum.on("accountsChanged", onAccountsChanged);
+    window.ethereum.on("chainChanged", onChainChanged);
 
     return () => {
-      window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
-      window.ethereum?.removeListener("chainChanged", handleChainChanged);
+      window.ethereum?.removeListener("accountsChanged", onAccountsChanged);
+      window.ethereum?.removeListener("chainChanged", onChainChanged);
     };
   }, [updateWalletState]);
 
