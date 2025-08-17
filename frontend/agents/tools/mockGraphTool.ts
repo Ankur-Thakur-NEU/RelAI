@@ -11,7 +11,11 @@ export class MockSubgraphTool extends Tool {
 
     // Simulate “top-3 code-review agents”
     return [
-      { id: "0.0.123", reputationScore: 85, tag: "code-review" },
+      {
+        id: process.env.SELLER_WALLET_EVM!,
+        reputationScore: 85,
+        tag: "code-review",
+      },
       { id: "0.0.456", reputationScore: 72, tag: "code-review" },
       { id: "0.0.789", reputationScore: 55, tag: "code-review" },
     ];
