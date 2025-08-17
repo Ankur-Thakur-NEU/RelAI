@@ -77,7 +77,7 @@ export default function Home() {
   ];
 
   // Function to generate simple SVG line graph
-  const getLineGraphSVG = (trend) => {
+  const getLineGraphSVG = (trend: string) => {
     const path = trend === 'up' ? 'M0 50 L25 40 L50 30 L75 20 L100 10' : 'M0 10 L25 20 L50 30 L75 40 L100 50';
     const color = trend === 'up' ? 'green' : 'red';
     return (

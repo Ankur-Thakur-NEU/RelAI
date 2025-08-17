@@ -2,19 +2,49 @@
 
 import React, { useEffect, useRef } from 'react';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface ThreeJS {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Scene: new () => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  PerspectiveCamera: new (fov: number, aspect: number, near: number, far: number) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  WebGLRenderer: new (options: any) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  SphereGeometry: new (radius: number, widthSegments: number, heightSegments: number) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  MeshBasicMaterial: new (options: any) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ShaderMaterial: new (options: any) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Mesh: new (geometry: any, material: any) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Color: new (color: string | number) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Vector2: new (x: number, y: number) => any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Clock: new () => any;
+  MathUtils: {
+    lerp: (a: number, b: number, t: number) => number;
+  };
+  FrontSide: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Camera: new (...args: any[]) => any;
+}
+
 interface InteractiveBlobProps {
   className?: string;
 }
 
 const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef<any>(null);
-  const cameraRef = useRef<any>(null);
-  const rendererRef = useRef<any>(null);
-  const blobRef = useRef<any>(null);
+  const sceneRef = useRef<unknown>(null);
+  const cameraRef = useRef<unknown>(null);
+  const rendererRef = useRef<unknown>(null);
+  const blobRef = useRef<unknown>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
   const mouseTargetRef = useRef({ x: 0, y: 0 });
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
   const isInitializedRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -26,7 +56,7 @@ const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => 
 
       // Load Three.js from CDN
       await new Promise<void>((resolve, reject) => {
-        if ((window as any).THREE) {
+        if ((window as unknown as { THREE?: unknown }).THREE) {
           resolve();
           return;
         }
@@ -45,9 +75,9 @@ const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => 
     };
 
     const initBlob = () => {
-      if (!canvasRef.current || !(window as any).THREE || isInitializedRef.current) return;
+      if (!canvasRef.current || !(window as unknown as { THREE?: unknown }).THREE || isInitializedRef.current) return;
 
-      const THREE = (window as any).THREE;
+      const THREE = (window as unknown as { THREE: ThreeJS }).THREE;
       const canvas = canvasRef.current;
 
       try {
@@ -226,12 +256,12 @@ const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => 
           !rendererRef.current || 
           !sceneRef.current || 
           !cameraRef.current ||
-          !(window as any).THREE) {
+          !(window as unknown as { THREE?: unknown }).THREE) {
         return;
       }
 
       // Additional check to ensure camera is a proper THREE.Camera instance
-      const THREE = (window as any).THREE;
+      const THREE = (window as unknown as { THREE: ThreeJS }).THREE;
       if (!(cameraRef.current instanceof THREE.Camera)) {
         console.warn('Camera not properly initialized yet, skipping frame');
         if (isMounted) {
@@ -246,9 +276,11 @@ const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => 
         mouseRef.current.y += (mouseTargetRef.current.y - mouseRef.current.y) * 0.12;
         
         // Update shader uniforms
-        if (blobRef.current.material && blobRef.current.material.uniforms) {
-          blobRef.current.material.uniforms.time.value += 0.008;
-          blobRef.current.material.uniforms.mouse.value.set(mouseRef.current.x, mouseRef.current.y);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const blob = blobRef.current as any;
+        if (blob && blob.material && blob.material.uniforms) {
+          blob.material.uniforms.time.value += 0.008;
+          blob.material.uniforms.mouse.value.set(mouseRef.current.x, mouseRef.current.y);
         }
         
         // Make the blob rotate more noticeably with mouse movement
@@ -256,14 +288,27 @@ const InteractiveBlob: React.FC<InteractiveBlobProps> = ({ className = '' }) => 
         const targetRotationX = Math.atan2(-mouseRef.current.y, 1) * 0.6;
         
         // Faster rotation response
-        blobRef.current.rotation.y += (targetRotationY - blobRef.current.rotation.y) * 0.15;
-        blobRef.current.rotation.x += (targetRotationX - blobRef.current.rotation.x) * 0.15;
+        if (blob && blob.rotation) {
+          blob.rotation.y += (targetRotationY - blob.rotation.y) * 0.15;
+          blob.rotation.x += (targetRotationX - blob.rotation.x) * 0.15;
+        }
         
         // Keep blob centered - no position movement
-        blobRef.current.position.x = 0;
-        blobRef.current.position.y = 0;
+        if (blob && blob.position) {
+          blob.position.x = 0;
+          blob.position.y = 0;
+          blob.position.z = 0;
+        }
         
-        rendererRef.current.render(sceneRef.current, cameraRef.current);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const renderer = rendererRef.current as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scene = sceneRef.current as any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const camera = cameraRef.current as any;
+        if (renderer && scene && camera) {
+          renderer.render(scene, camera);
+        }
         
         if (isMounted) {
           animationFrameRef.current = requestAnimationFrame(animate);
