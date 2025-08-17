@@ -130,16 +130,20 @@ export const useMultiWallet = () => {
       disconnect();
     };
 
-    // Add event listeners
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-    window.ethereum.on('chainChanged', handleChainChanged);
-    window.ethereum.on('disconnect', handleDisconnect);
+    // Add event listeners with proper type handling
+    const onAccountsChanged = (...args: unknown[]) => handleAccountsChanged(args[0] as string[]);
+    const onChainChanged = (...args: unknown[]) => handleChainChanged(args[0] as string);
+    const onDisconnect = (...args: unknown[]) => handleDisconnect();
+
+    window.ethereum.on('accountsChanged', onAccountsChanged);
+    window.ethereum.on('chainChanged', onChainChanged);
+    window.ethereum.on('disconnect', onDisconnect);
 
     return () => {
       // Cleanup event listeners
-      window.ethereum?.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum?.removeListener('chainChanged', handleChainChanged);
-      window.ethereum?.removeListener('disconnect', handleDisconnect);
+      window.ethereum?.removeListener('accountsChanged', onAccountsChanged);
+      window.ethereum?.removeListener('chainChanged', onChainChanged);
+      window.ethereum?.removeListener('disconnect', onDisconnect);
     };
   }, [disconnect, updateWalletState]);
 

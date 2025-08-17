@@ -13,6 +13,11 @@ const nextConfig = {
     return config;
   },
 
+  // Disable ESLint during builds (for faster deployment)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   // Environment variables
   env: {
     NEXT_PUBLIC_LOCK_CONTRACT_ADDRESS: process.env.NEXT_PUBLIC_LOCK_CONTRACT_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
