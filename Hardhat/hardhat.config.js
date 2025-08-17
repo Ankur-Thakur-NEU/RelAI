@@ -2,7 +2,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("@nomicfoundation/hardhat-ethers");
-require("dotenv").config();
+require("dotenv").config({path: '.env.local'});
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -46,34 +46,8 @@ module.exports = {
         gas: 800000,
         gasPrice: 360000000000,
       },
-    } : {}),
-    
-    ...(process.env.HEDERA_PRIVATE_KEY ? {
-      hederaMainnet: {
-        url: process.env.HEDERA_MAINNET_URL || "https://mainnet.hashio.io/api", 
-        accounts: [process.env.HEDERA_PRIVATE_KEY],
-        chainId: 295, // Hedera Mainnet Chain ID
-        gas: 800000,
-        gasPrice: 360000000000, // 360 gwei (Hedera minimum)
-      },
-    } : {}),
-    
-    // Other Networks (optional for cross-chain)
-    ...(process.env.SEPOLIA_PRIVATE_KEY ? {
-      sepolia: {
-        url: process.env.SEPOLIA_URL || "https://rpc.sepolia.org",
-        accounts: [process.env.SEPOLIA_PRIVATE_KEY],
-        chainId: 11155111,
-      },
-    } : {}),
-    
-    ...(process.env.MAINNET_PRIVATE_KEY ? {
-      mainnet: {
-        url: process.env.MAINNET_URL || "https://ethereum.publicnode.com",
-        accounts: [process.env.MAINNET_PRIVATE_KEY],
-        chainId: 1,
-      },
-    } : {}),
+    } : {})
+
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS === "true",

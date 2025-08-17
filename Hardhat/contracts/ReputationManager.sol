@@ -1,388 +1,74 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity ^0.8.20;
 
-import {IRouterClient} from "@chainlink/contracts-ccip/contracts/interfaces/IRouterClient.sol";
-import {OwnerIsCreator} from "@chainlink/contracts/src/v0.8/shared/access/OwnerIsCreator.sol";
-import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
-import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
-import {IERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@chainlink/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/utils/SafeERC20.sol";
-
-/**
- * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
- * THIS IS AN EXAMPLE CONTRACT THAT USES UN-AUDITED CODE.
- * DO NOT USE THIS CODE IN PRODUCTION.
- */
-
-/// @title - A simple messenger contract for sending/receiving string data across chains.
-contract ReputationManager is CCIPReceiver, OwnerIsCreator {
-    using SafeERC20 for IERC20;
-
-	uint64 public constant DEST_SELECTOR_SEPOLIA = 16015286601757825753;
-	address public destinationReceiver;
-	mapping(address => uint16) public reputation; // 0 = unregistered sentinel
-
-	function setDestinationReceiver(address _receiver) external onlyOwner {
-		require(_receiver != address(0), "bad receiver");
-		destinationReceiver = _receiver;
-	}
-
-    // Custom errors to provide more descriptive revert messages.
-    error NotEnoughBalance(uint256 currentBalance, uint256 calculatedFees); // Used to make sure contract has enough balance.
-    error NothingToWithdraw(); // Used when trying to withdraw Ether but there's nothing to withdraw.
-    error FailedToWithdrawEth(address owner, address target, uint256 value); // Used when the withdrawal of Ether fails.
-    error DestinationChainNotAllowlisted(uint64 destinationChainSelector); // Used when the destination chain has not been allowlisted by the contract owner.
-    error SourceChainNotAllowlisted(uint64 sourceChainSelector); // Used when the source chain has not been allowlisted by the contract owner.
-    error SenderNotAllowlisted(address sender); // Used when the sender has not been allowlisted by the contract owner.
-    error InvalidReceiverAddress(); // Used when the receiver address is 0.
-
-    // Event emitted when a message is sent to another chain.
-    event MessageSent(
-        bytes32 indexed messageId, // The unique ID of the CCIP message.
-        uint64 indexed destinationChainSelector, // The chain selector of the destination chain.
-        address receiver, // The address of the receiver on the destination chain.
-        bytes data, // The bytes being sent.
-        address feeToken, // the token address used to pay CCIP fees.
-        uint256 fees // The fees paid for sending the CCIP message.
-    );
-
-    // Event emitted when a message is received from another chain.
-    event MessageReceived(
-        bytes32 indexed messageId, // The unique ID of the CCIP message.
-        uint64 indexed sourceChainSelector, // The chain selector of the source chain.
-        address sender, // The address of the sender from the source chain.
-        bytes data // The bytes that was received.
-    );
-
-    bytes32 private s_lastReceivedMessageId; // Store the last received messageId.
-	bytes private s_lastReceivedData;
-
-    // Mapping to keep track of allowlisted destination chains.
-    mapping(uint64 => bool) public allowlistedDestinationChains;
-
-    // Mapping to keep track of allowlisted source chains.
-    mapping(uint64 => bool) public allowlistedSourceChains;
-
-    // Mapping to keep track of allowlisted senders.
-    mapping(address => bool) public allowlistedSenders;
-
-    IERC20 private s_linkToken;
-
-    /// @notice Constructor initializes the contract with the router address.
-    /// @param _router The address of the router contract.
-    /// @param _link The address of the link contract.
-    constructor(address _router, address _link) CCIPReceiver(_router) {
-        s_linkToken = IERC20(_link);
-		allowlistedDestinationChains[DEST_SELECTOR_SEPOLIA] = true;
+contract ReputationManager {
+    struct Agent {
+        string tag;
+        uint8 reputation; // [1;100]
+        bool exists;
     }
 
-    /// @dev Modifier that checks if the chain with the given destinationChainSelector is allowlisted.
-    /// @param _destinationChainSelector The selector of the destination chain.
-    modifier onlyAllowlistedDestinationChain(uint64 _destinationChainSelector) {
-        if (!allowlistedDestinationChains[_destinationChainSelector])
-            revert DestinationChainNotAllowlisted(_destinationChainSelector);
+    mapping(address => Agent) private agents;
+    address[] private agentList;
+
+    event AgentRegistered(address indexed agent, string tag, uint8 reputation);
+    event ReputationUpdated(address indexed agent, string x402Ref, uint8 oldReputation, uint8 newReputation);
+    event TransactionFinalized(address indexed buyer, address indexed seller, string x402Ref, int8 rating);
+
+    modifier onlyRegistered(address agent) {
+        require(agents[agent].exists, "Agent not registered");
         _;
     }
 
-    /// @dev Modifier that checks if the chain with the given sourceChainSelector is allowlisted and if the sender is allowlisted.
-    /// @param _sourceChainSelector The selector of the destination chain.
-    /// @param _sender The address of the sender.
-    modifier onlyAllowlisted(uint64 _sourceChainSelector, address _sender) {
-        if (!allowlistedSourceChains[_sourceChainSelector])
-            revert SourceChainNotAllowlisted(_sourceChainSelector);
-        if (!allowlistedSenders[_sender]) revert SenderNotAllowlisted(_sender);
+    modifier validReputation(uint8 reputation) {
+        require(reputation >= 1 && reputation <= 100, "Reputation must be [1;100]");
         _;
     }
 
-    /// @dev Modifier that checks the receiver address is not 0.
-    /// @param _receiver The receiver address.
-    modifier validateReceiver(address _receiver) {
-        if (_receiver == address(0)) revert InvalidReceiverAddress();
-        _;
+    function registerAgent(
+        address agentAddress,
+        string calldata tag,
+        uint8 reputation
+    ) external validReputation(reputation) {
+        require(!agents[agentAddress].exists, "Agent already registered");
+        agents[agentAddress] = Agent(tag, reputation, true);
+        agentList.push(agentAddress);
+        emit AgentRegistered(agentAddress, tag, reputation);
     }
 
-    /// @dev Updates the allowlist status of a destination chain for transactions.
-    function allowlistDestinationChain(
-        uint64 _destinationChainSelector,
-        bool allowed
-    ) external onlyOwner {
-        allowlistedDestinationChains[_destinationChainSelector] = allowed;
-    }
-
-    /// @dev Updates the allowlist status of a source chain for transactions.
-    function allowlistSourceChain(
-        uint64 _sourceChainSelector,
-        bool allowed
-    ) external onlyOwner {
-        allowlistedSourceChains[_sourceChainSelector] = allowed;
-    }
-
-    /// @dev Updates the allowlist status of a sender for transactions.
-    function allowlistSender(address _sender, bool allowed) external onlyOwner {
-        allowlistedSenders[_sender] = allowed;
-    }
-
-    /// @notice Sends data to receiver on the destination chain.
-    /// @notice Pay for fees in LINK.
-    /// @dev Assumes your contract has sufficient LINK.
-    /// @param _destinationChainSelector The identifier (aka selector) for the destination blockchain.
-    /// @param _receiver The address of the recipient on the destination blockchain.
-    /// @param _text The text to be sent.
-    /// @return messageId The ID of the CCIP message that was sent.
-    function sendMessagePayLINK(
-        uint64 _destinationChainSelector,
-        address _receiver,
-        bytes memory _data
-    )
-        external
-        onlyOwner
-        onlyAllowlistedDestinationChain(_destinationChainSelector)
-        validateReceiver(_receiver)
-        returns (bytes32 messageId)
-    {
-        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
-        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-            _receiver,
-            _data,
-            address(s_linkToken)
-        );
-
-        // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
-
-        // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee(_destinationChainSelector, evm2AnyMessage);
-
-        if (fees > s_linkToken.balanceOf(address(this)))
-            revert NotEnoughBalance(s_linkToken.balanceOf(address(this)), fees);
-
-        // approve the Router to transfer LINK tokens on contract's behalf. It will spend the fees in LINK
-        s_linkToken.approve(address(router), fees);
-
-        // Send the CCIP message through the router and store the returned CCIP message ID
-        messageId = router.ccipSend(_destinationChainSelector, evm2AnyMessage);
-
-        // Emit an event with message details
-        emit MessageSent(
-            messageId,
-            _destinationChainSelector,
-            _receiver,
-            _data,
-            address(s_linkToken),
-            fees
-        );
-
-        // Return the CCIP message ID
-        return messageId;
-    }
-
-    /// @notice Sends data to receiver on the destination chain.
-    /// @notice Pay for fees in native gas.
-    /// @dev Assumes your contract has sufficient native gas tokens.
-    /// @param _destinationChainSelector The identifier (aka selector) for the destination blockchain.
-    /// @param _receiver The address of the recipient on the destination blockchain.
-    /// @param _text The text to be sent.
-    /// @return messageId The ID of the CCIP message that was sent.
-    function sendMessagePayNative(
-        uint64 _destinationChainSelector,
-        address _receiver,
-        bytes memory _data
-    )
-        external
-        onlyOwner
-        onlyAllowlistedDestinationChain(_destinationChainSelector)
-        validateReceiver(_receiver)
-        returns (bytes32 messageId)
-    {
-        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
-        Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(
-            _receiver,
-            _data,
-            address(0)
-        );
-
-        // Initialize a router client instance to interact with cross-chain router
-        IRouterClient router = IRouterClient(this.getRouter());
-
-        // Get the fee required to send the CCIP message
-        uint256 fees = router.getFee(_destinationChainSelector, evm2AnyMessage);
-
-        if (fees > address(this).balance)
-            revert NotEnoughBalance(address(this).balance, fees);
-
-        // Send the CCIP message through the router and store the returned CCIP message ID
-        messageId = router.ccipSend{value: fees}(
-            _destinationChainSelector,
-            evm2AnyMessage
-        );
-
-        // Emit an event with message details
-        emit MessageSent(
-            messageId,
-            _destinationChainSelector,
-            _receiver,
-            _data,
-            address(0),
-            fees
-        );
-
-        // Return the CCIP message ID
-        return messageId;
-    }
-
-    /// handle a received message
-    function _ccipReceive(
-        Client.Any2EVMMessage memory any2EvmMessage
-    )
-        internal
-        override
-        onlyAllowlisted(
-            any2EvmMessage.sourceChainSelector,
-            abi.decode(any2EvmMessage.sender, (address))
-        ) // Make sure source chain and sender are allowlisted
-    {
-        s_lastReceivedMessageId = any2EvmMessage.messageId; // fetch the messageId
-		s_lastReceivedData = any2EvmMessage.data;
-		(address agent, uint16 newRep) = abi.decode(any2EvmMessage.data, (address, uint16));
-
-		updateAgentRepFromDAO(agent, newRep);
-
-        emit MessageReceived(
-            any2EvmMessage.messageId,
-            any2EvmMessage.sourceChainSelector, // fetch the source chain identifier (aka selector)
-            abi.decode(any2EvmMessage.sender, (address)), // abi-decoding of the sender address,
-            any2EvmMessage.data
-        );
-    }
-
-    /// @notice Construct a CCIP message.
-    /// @dev This function will create an EVM2AnyMessage struct with all the necessary information for sending a text.
-    /// @param _receiver The address of the receiver.
-    /// @param _text The string data to be sent.
-    /// @param _feeTokenAddress The address of the token used for fees. Set address(0) for native gas.
-    /// @return Client.EVM2AnyMessage Returns an EVM2AnyMessage struct which contains information for sending a CCIP message.
-    function _buildCCIPMessage(
-        address _receiver,
-        bytes memory _data,
-        address _feeTokenAddress
-    ) private pure returns (Client.EVM2AnyMessage memory) {
-        // Create an EVM2AnyMessage struct in memory with necessary information for sending a cross-chain message
-        return
-            Client.EVM2AnyMessage({
-                receiver: abi.encode(_receiver), // ABI-encoded receiver address
-                data: _data, // ABI-encoded string
-                tokenAmounts: new Client.EVMTokenAmount[](0), // Empty array as no tokens are transferred
-                extraArgs: Client._argsToBytes(
-                    // Additional arguments, setting gas limit and allowing out-of-order execution.
-                    // Best Practice: For simplicity, the values are hardcoded. It is advisable to use a more dynamic approach
-                    // where you set the extra arguments off-chain. This allows adaptation depending on the lanes, messages,
-                    // and ensures compatibility with future CCIP upgrades. Read more about it here: https://docs.chain.link/ccip/concepts/best-practices/evm#using-extraargs
-                    Client.GenericExtraArgsV2({
-                        gasLimit: 200_000, // Gas limit for the callback on the destination chain
-                        allowOutOfOrderExecution: true // Allows the message to be executed out of order relative to other messages from the same sender
-                    })
-                ),
-                // Set the feeToken to a feeTokenAddress, indicating specific asset will be used for fees
-                feeToken: _feeTokenAddress
-            });
-    }
-
-    /// @notice Fetches the details of the last received message.
-    /// @return messageId The ID of the last received message.
-    /// @return text The last received text.
-    function getLastReceivedMessageDetails()
+    function getAgent(address agentAddress)
         external
         view
-        returns (bytes32 messageId, string memory text)
+        onlyRegistered(agentAddress)
+        returns (string memory tag, uint8 reputation)
     {
-        return (s_lastReceivedMessageId, s_lastReceivedData);
+        Agent storage ag = agents[agentAddress];
+        return (ag.tag, ag.reputation);
     }
 
-    /// @notice Fallback function to allow the contract to receive Ether.
-    /// @dev This function has no function body, making it a default function for receiving Ether.
-    /// It is automatically called when Ether is sent to the contract without any data.
-    receive() external payable {}
+    /// @notice Finalize a transaction, rate seller, and update their reputation
+    /// @param seller Address of the seller (must be registered)
+    /// @param rating Value between -3 and 3
+    /// @param x402Ref External transaction reference (string)
+    function finalizeTransaction(
+        address seller,
+        int8 rating,
+        string calldata x402Ref
+    ) external onlyRegistered(msg.sender) onlyRegistered(seller) {
+        require(rating >= -3 && rating <= 3, "rating out of range");
+        require(seller != msg.sender, "self rating not allowed");
 
-    /// @notice Allows the contract owner to withdraw the entire balance of Ether from the contract.
-    /// @dev This function reverts if there are no funds to withdraw or if the transfer fails.
-    /// It should only be callable by the owner of the contract.
-    /// @param _beneficiary The address to which the Ether should be sent.
-    function withdraw(address _beneficiary) public onlyOwner {
-        // Retrieve the balance of this contract
-        uint256 amount = address(this).balance;
+        uint8 oldRep = agents[seller].reputation;
 
-        // Revert if there is nothing to withdraw
-        if (amount == 0) revert NothingToWithdraw();
+        // update rep
+        int256 newVal = int256(uint256(oldRep)) + int256(rating);
+        if (newVal < 1) newVal = 1;
+        if (newVal > 100) newVal = 100;
 
-        // Attempt to send the funds, capturing the success status and discarding any return data
-        (bool sent, ) = _beneficiary.call{value: amount}("");
+        uint8 newRep = uint8(uint256(newVal));
+        agents[seller].reputation = newRep;
 
-        // Revert if the send failed, with information about the attempted transfer
-        if (!sent) revert FailedToWithdrawEth(msg.sender, _beneficiary, amount);
+        emit TransactionFinalized(msg.sender, seller, x402Ref, rating);
+        emit ReputationUpdated(seller, x402Ref, oldRep, newRep);
     }
-
-    /// @notice Allows the owner of the contract to withdraw all tokens of a specific ERC20 token.
-    /// @dev This function reverts with a 'NothingToWithdraw' error if there are no tokens to withdraw.
-    /// @param _beneficiary The address to which the tokens will be sent.
-    /// @param _token The contract address of the ERC20 token to be withdrawn.
-    function withdrawToken(
-        address _beneficiary,
-        address _token
-    ) public onlyOwner {
-        // Retrieve the balance of this contract
-        uint256 amount = IERC20(_token).balanceOf(address(this));
-
-        // Revert if there is nothing to withdraw
-        if (amount == 0) revert NothingToWithdraw();
-
-        IERC20(_token).safeTransfer(_beneficiary, amount);
-    }
-
-	function registerAgent(address agent, string memory tag, uint16 initRep) internal {
-		require(agent != address(0), "zero agent");
-		require(reputation[agent] == 0, "already registered");     // 0 => sentinel
-		require(bytes(tag).length > 0, "empty tag");
-		require(initRep >= 1 && initRep <= 100, "initial reputation must be [1, 100]");
-
-		reputation[agent] = initRep;
-
-		bytes memory payload = abi.encode(agent, tag, initRep);
-		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
-	}
-	
-	function finalizeTransaction(
-		address seller, 
-		int8 rating, 
-		string calldata x402Ref
-	) external {
-		require(rating >= -3 && rating <= 3, "rating out of range");
-		
-		require(reputation[msg.sender] != 0, "buyer not registered");
-		require(reputation[seller] != 0, "seller not registered");
-		
-		require(seller != msg.sender, "self rating not allowed");
-		
-		uint16 oldRep = reputation[seller];
-		
-		int256 newVal = int256(uint256(oldRep)) + int256(rating);
-		if (newVal < 1)   newVal = 1;
-		if (newVal > 100) newVal = 100;
-
-		uint16 newRep = uint16(uint256(newVal));
-		reputation[seller] = newRep;
-
-		bytes memory payload = abi.encode(msg.sender, seller, oldRep, x402Ref, newRep);
-		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
-	}
-
-	function updateAgentRepFromDAO(address agent, uint16 newRep) internal {
-		require(agent != address(0), "zero agent");
-		require(reputation[agent] != 0, "agent not registered");
-    	require(newRep >= 1 && newRep <= 100, "reputation out of bounds");
-
-		reputation[agent] = newRep;
-
-		bytes memory payload = abi.encode(agent, newRep);
-		sendMessagePayLINK(DEST_SELECTOR_SEPOLIA, destinationReceiver, payload);
-	}
 }
