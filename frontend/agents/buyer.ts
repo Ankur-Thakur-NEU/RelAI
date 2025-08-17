@@ -13,7 +13,6 @@ import { MockSubgraphTool } from "./tools/mockGraphTool";
 import { MockFinalizeTransactionTool } from "./tools/dummyTrxTool";
 // import { FinalizeTransactionTool } from "./tools/finalizeTrxTool";
 // import { reputationManagerAbi } from "./abi/reputationManager";
-// import { MCPSubgraphTool } from "./tools/subgraphTool";
 
 export interface CreateBuyerAgentOptions {
   hederaAccountId: string;
@@ -52,19 +51,12 @@ export function createBuyerAgent({
   //     reputationManagerAbi
   //   );
 
-  // const subgraphNLTool = new MCPSubgraphTool(
-  //   "https://subgraphs.mcp.thegraph.com/sse",
-  //   process.env.SUBGRAPH_GATEWAY_API_KEY!
-  // );
-
-  const dummyTool = new MockSubgraphTool();
-  const dummyTrxTool = new MockFinalizeTransactionTool();
+  const mockGraphTool = new MockSubgraphTool();
+  const mockFinalizeTransactionTool = new MockFinalizeTransactionTool();
   const tools = [
     ...hederaToolkit.getTools(),
-    // finalizeTransactionTool,
-    // subgraphNLTool,
-    dummyTool,
-    dummyTrxTool,
+    mockFinalizeTransactionTool,
+    mockGraphTool,
   ];
 
   const SYSTEM_PROMPT = `
